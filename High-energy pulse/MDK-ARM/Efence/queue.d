@@ -1,0 +1,15 @@
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/queue.c
+.\efence\queue.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stdlib.h
+.\efence\queue.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\string.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+.\efence\queue.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stddef.h
+.\efence\queue.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stdint.h
+.\efence\queue.o: ../Inc/FreeRTOSConfig.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/portmacro.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
+.\efence\queue.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h

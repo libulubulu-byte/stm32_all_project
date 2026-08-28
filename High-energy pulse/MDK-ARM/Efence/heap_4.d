@@ -1,0 +1,13 @@
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c
+.\efence\heap_4.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stdlib.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+.\efence\heap_4.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stddef.h
+.\efence\heap_4.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stdint.h
+.\efence\heap_4.o: ../Inc/FreeRTOSConfig.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/portmacro.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+.\efence\heap_4.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

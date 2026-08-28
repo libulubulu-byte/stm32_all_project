@@ -1,0 +1,57 @@
+#ifndef _POWERPULSE_H__
+    #define _POWERPULSE_H__
+//#include "adc.h"
+#include "cmsis_os.h"
+
+
+
+typedef struct {
+	uint8_t bCtrlStatus;
+    uint8_t bRunningStatus;
+    uint16_t uiPulseCnt;
+	uint16_t PulseWidth;
+    uint8_t ucSetVoltage;
+    uint8_t ucVoltage;
+    uint8_t ucCurrent;
+
+	uint16_t AdcValue[4];
+    uint32_t uiVoltage;
+
+    uint8_t ucAdcCnt;
+    uint8_t ucSampleState;
+    uint32_t uiAdcVoltage[5];
+
+    uint8_t ucShortAlarmCnt;
+    uint8_t ucOpenAlarmCnt;
+	uint8_t ucTouchAlarmCnt;
+    uint8_t ucAlarmReleaseCnt;
+    uint16_t AlarmVoltage;
+    uint8_t ucAlarmCycle;
+    uint8_t ucTouchEN;
+    uint8_t ucAlarmStatus; 
+	uint8_t ucAlarmType;
+}EFENCEDATA;
+
+typedef struct {
+	uint8_t ucPulseOn;
+	uint8_t ucAlarmCycle;
+    uint8_t ucTouchEN;
+	uint8_t ucSetVoltage[2];
+}PulseIn_Msg_TypeDef;
+
+typedef struct {
+    uint8_t ucRunningStatus;
+	uint8_t ucAlarmStatus;
+	uint8_t ucAlarmType;
+	uint8_t ucVoltage[2];
+    uint8_t ucCurrent[2];
+}PulseOut_Msg_TypeDef;
+
+
+extern osMessageQueueId_t xPulseInQueue;
+extern osMessageQueueId_t xPulseOutQueue;
+
+void MX_Pulse_init(void);
+
+#endif 
+

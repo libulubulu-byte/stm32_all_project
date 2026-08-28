@@ -1,0 +1,12 @@
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/port.c
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+.\efence\port.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stddef.h
+.\efence\port.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stdint.h
+.\efence\port.o: ../Inc/FreeRTOSConfig.h
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/portmacro.h
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+.\efence\port.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

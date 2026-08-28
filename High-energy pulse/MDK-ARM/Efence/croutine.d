@@ -1,0 +1,14 @@
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/croutine.c
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+.\efence\croutine.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stddef.h
+.\efence\croutine.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stdint.h
+.\efence\croutine.o: ../Inc/FreeRTOSConfig.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/portmacro.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/croutine.h
+.\efence\croutine.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h

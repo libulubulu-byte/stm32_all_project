@@ -1,0 +1,607 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * File Name          : freertos.c
+  * Description        : Code for freertos applications
+  ******************************************************************************
+  * @attention
+  *
+  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * All rights reserved.</center></h2>
+  *
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+
+/* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "task.h"
+#include "main.h"
+#include "cmsis_os.h"
+#include "keyboard.h"
+#include "gpio.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */     
+#include "usart.h"
+#include "disp.h"
+#include "keyboard.h"
+#include "var.h"
+#include "powerpulse.h"
+#include "stdio.h"
+//#include "ds1302.h"
+#include "uart_tcp.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
+DEVICEDATA device;
+static uint8_t ucBeepAlarmFlag;
+static uint8_t ucRelayAlarmFlag;
+static uint8_t ucEEAlarmFlag;
+static uint16_t uiRunningTime;
+static uint16_t beepon_delay_cnt[4];
+static uint16_t relayon_delay_cnt[4];
+static uint16_t led_period_cnt[3];
+static uint8_t ucPulseOnLast;
+
+
+/* USER CODE END Variables */
+/* Definitions for defaultTask */
+osThreadId_t logicTaskHandle;
+const osThreadAttr_t logicTask_attributes = {
+  .name = "logicTask",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 128 * 4
+};
+
+/* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN FunctionPrototypes */
+osThreadId_t uartTaskHandle;
+osThreadId_t uTCPTaskHandle;
+osThreadId_t displayTaskHandle;
+osThreadId_t dinputTaskHandle;
+osThreadId_t eepromTaskHandle;
+const osThreadAttr_t uartTask_attributes = {
+  .name = "uartTask",
+  .priority = (osPriority_t) osPriorityNormal5,
+  .stack_size = 128 * 4
+};
+const osThreadAttr_t uartTCP_attributes = {
+  .name = "uartTCPTask",
+  .priority = (osPriority_t) osPriorityNormal4,
+  .stack_size = 256 * 32
+};
+const osThreadAttr_t displayTask_attributes = {
+  .name = "displayTask",
+  .priority = (osPriority_t) osPriorityNormal2,
+  .stack_size = 128 * 4
+};
+const osThreadAttr_t dinputTask_attributes = {
+  .name = "dinputTask",
+  .priority = (osPriority_t) osPriorityNormal3,
+  .stack_size = 128 * 4
+};
+const osThreadAttr_t eepromTask_attributes = {
+  .name = "eepromTask",
+  .priority = (osPriority_t) osPriorityNormal1,
+  .stack_size = 128 * 4
+};
+/* USER CODE END FunctionPrototypes */
+
+void StartLogicTask(void *argument);
+
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+//  uint8_t ee_init_flag;
+//  AT24CXX_WriteOneByte (EE_INITIAL, 0xAA );
+  device.bDeviceFlag = AT24CXX_ReadOneByte( EE_INITIAL );
+
+       if(device.bDeviceFlag == 0xA5)
+           ReadEEPROM(&device);
+       else
+       {
+           init_EEPROM();
+           ReadEEPROM(&device);
+       } 
+       
+       
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+//  osMessageQueueId_t xDisplayData;
+
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  logicTaskHandle = osThreadNew(StartLogicTask, NULL, &logicTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  uartTaskHandle = osThreadNew(vUART_TASK, &device, &uartTask_attributes);
+  displayTaskHandle = osThreadNew(vDisplayTask, &device, &displayTask_attributes);
+  dinputTaskHandle = osThreadNew(vDinputTask, NULL, &displayTask_attributes);
+  eepromTaskHandle = osThreadNew(vWriteEETask, NULL, &eepromTask_attributes);
+  uTCPTaskHandle = osThreadNew(vUART_TCP_TASK, &device, &uartTCP_attributes);
+	
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+}
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used 
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartLogicTask(void *argument)
+{
+  /* USER CODE BEGIN StartDefaultTask */
+  uint8_t  last_status = 0; 
+  uint8_t bCheckEnable;
+//  uint8_t lcd_update_flag;
+
+  DINPUT sw_key;
+  PulseOut_Msg_TypeDef xPulseOutData;
+  PulseIn_Msg_TypeDef xPulseInData;
+  EEprom_Msg_TypeDef xEEpromWriteData;
+
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
+
+  bCheckEnable = 0x00;
+  device.ucBatteryLow = 0x00;
+  printf("logic task init success");
+	MX_DOG_Init();
+  
+  /* Infinite loop */
+  for(;;)
+  {
+    Dog_ON();
+//system runing count;
+    device.ucAddress = get_addr();
+    if(osMessageQueueGet (xKeyChangeMsg, &sw_key, NULL, NULL) == osOK)
+    {
+        device.ucPowerStatus = sw_key.ucPowerStatus;
+		device.ucAlarmStatus &= 0x3c;
+		device.ucAlarmStatus |= sw_key.ucSwitchAlarm;
+		device.ucKeyValue = sw_key.keyvalue;
+		//if have ucIREn Signal then check tha IR status, or the IR alarm is always miss
+		if (device.ucIREn  != 0xaa ) 
+		{
+			device.ucAlarmStatus   &= 0xfd;       //pE0 the IR_EN signal
+		} 
+		if(device.ucAlarmStatus&0x01)  //tamper
+		{
+			ucBeepAlarmFlag |= 0x01;
+		    ucRelayAlarmFlag |= 0x01;
+		}
+		if(device.ucAlarmStatus&0x02)
+		{
+			ucBeepAlarmFlag |= 0x02;
+		    ucRelayAlarmFlag |= 0x02;
+			if(!(ucEEAlarmFlag&0xfd))
+			{
+				ucEEAlarmFlag |= 0x02;
+                HAL_RTC_GetDate(&hrtc,&sDate,RTC_FORMAT_BCD);
+                HAL_RTC_GetTime(&hrtc,&sTime,RTC_FORMAT_BCD);
+
+				xEEpromWriteData.ucCmd = 0x01;
+				xEEpromWriteData.ucData[0] = 0x00;
+				xEEpromWriteData.ucData[1] = 0x03;
+				xEEpromWriteData.ucData[2] = 0x00;
+				xEEpromWriteData.ucData[3] = sDate.Year;  ///read_ds1302(0x8d);   //year
+				xEEpromWriteData.ucData[4] = sDate.Month;  //read_ds1302(0x89);   //month
+				xEEpromWriteData.ucData[5] = sDate.Date;  //read_ds1302(0x87);   //date
+				xEEpromWriteData.ucData[6] = sTime.Hours;  //read_ds1302(0x85);   //hour
+				xEEpromWriteData.ucData[7] = sTime.Minutes;   //read_ds1302(0x83);   //min
+				osMessageQueuePut(xEEWriteMsg,&xEEpromWriteData,0,NULL);
+			}
+	    }
+		else
+		{
+			ucEEAlarmFlag &= 0xfd;
+		}
+    }
+//beep Alarm flag bit0~bit7  bit1 tamper bit0 IR  
+    if(osMessageQueueGet (xPulseOutQueue, &xPulseOutData, NULL, NULL) == osOK)
+    {
+		device.ucAlarmStatus &= 0x03;
+		device.ucAlarmStatus |= ((xPulseOutData.ucAlarmStatus&0x0f)<<2);
+		device.ucAlarmType = xPulseOutData.ucAlarmType;
+		device.ucRunningStatus = xPulseOutData.ucRunningStatus;
+        
+		device.ucVoltage[0] = xPulseOutData.ucVoltage[0];
+		device.ucVoltage[1] = xPulseOutData.ucVoltage[1];
+        device.ucCurrent[0] = xPulseOutData.ucCurrent[0];
+		device.ucCurrent[1] = xPulseOutData.ucCurrent[1];
+		
+	    if(xPulseOutData.ucAlarmStatus &0x01) // defence area 1 alarm bit
+	    {
+		  ucBeepAlarmFlag |= 0x04;
+		  ucRelayAlarmFlag |= 0x04;
+			if(!(ucEEAlarmFlag&0xfb))
+			{
+				ucEEAlarmFlag |= 0x04;
+				xEEpromWriteData.ucCmd = 0x01;
+				xEEpromWriteData.ucData[0] = 0x01;
+				xEEpromWriteData.ucData[1] = device.ucAlarmType&0x0f;
+				xEEpromWriteData.ucData[2] = 0x00;
+				xEEpromWriteData.ucData[3] = sDate.Year;  ///read_ds1302(0x8d);   //year
+				xEEpromWriteData.ucData[4] = sDate.Month;  //read_ds1302(0x89);   //month
+				xEEpromWriteData.ucData[5] = sDate.Date;  //read_ds1302(0x87);   //date
+				xEEpromWriteData.ucData[6] = sTime.Hours;  //read_ds1302(0x85);   //hour
+				xEEpromWriteData.ucData[7] = sTime.Minutes;   //read_ds1302(0x83);   //min
+				osMessageQueuePut(xEEWriteMsg,&xEEpromWriteData,0,NULL);
+			}
+	    }
+		else
+		{
+			ucEEAlarmFlag &= 0xfb;
+		}
+	    if(xPulseOutData.ucAlarmStatus &0x02) //defence area 2 alarm bit 
+	    {
+		  ucBeepAlarmFlag |= 0x08;
+		  ucRelayAlarmFlag |= 0x08;
+			if(!(ucEEAlarmFlag&0xf7))
+			{
+				ucEEAlarmFlag |= 0x08;
+				xEEpromWriteData.ucCmd = 0x01;
+				xEEpromWriteData.ucData[0] = 0x02;
+				xEEpromWriteData.ucData[1] = ((device.ucAlarmType&0xf0)>>4);
+				xEEpromWriteData.ucData[2] = 0x00;
+				xEEpromWriteData.ucData[3] = sDate.Year;  ///read_ds1302(0x8d);   //year
+				xEEpromWriteData.ucData[4] = sDate.Month;  //read_ds1302(0x89);   //month
+				xEEpromWriteData.ucData[5] = sDate.Date;  //read_ds1302(0x87);   //date
+				xEEpromWriteData.ucData[6] = sTime.Hours;  //read_ds1302(0x85);   //hour
+				xEEpromWriteData.ucData[7] = sTime.Minutes;   //read_ds1302(0x83);   //min
+				osMessageQueuePut(xEEWriteMsg,&xEEpromWriteData,0,NULL);
+			}
+			
+	    }
+		else
+		{
+			ucEEAlarmFlag &= 0xf7;
+		}
+    }
+
+//check power status
+    switch (device.ucPowerStatus)
+    {
+		case 0x00:
+            device.ucPowerFlag = 0x00;
+            if (  device.ucBatteryLow == 0x55 ) 
+            {
+                device.ucBatteryLow = 0;      
+                beep_off();
+            }
+            if (( device.ucRunningStatus== 0 ) && ( last_status == 0x01 )) 
+            {
+                device.ucPulseOn = 0x03;
+            }
+            // defence area 1 is running
+            else if (((device.ucRunningStatus& 0x01) == 0 ) && ( last_status == 0x02 )) 
+            {
+                device.ucPulseOn = 0x01;
+            }
+            //defence area 2 is running
+            else if (( (device.ucRunningStatus&0x02) == 0 ) && ( last_status == 0x03 )) 
+            {
+                device.ucPulseOn = 0x02;
+            }
+            last_status = 0;
+            break;
+            
+        case 0x01:
+            device.ucPowerFlag = 0x01;
+            break;
+        case 0x02:  
+            device.ucPowerFlag = 0x02;
+            if (  device.ucBatteryLow == 0x55 )
+            {
+                device.ucBatteryLow = 0;      
+                beep_off();
+            }
+            break;
+        case 0x03:
+            if ( bCheckEnable)
+            {
+                device.ucPowerFlag = 0x03;
+                if (( device.ucRunningStatus == 0x03) &&  (device.ucBatteryLow == 0x00 ) ) 
+                {
+                    device.ucPulseOn =  0x00;
+                    last_status = 0x01;
+                }
+                else if ( ( device.ucRunningStatus & 0x01) &&  (device.ucBatteryLow  == 0x00 ) )
+                {
+                    device.ucPulseOn &= 0x01;
+                    last_status = 0x02;
+                }
+                else if ( ( device.ucRunningStatus & 0x02) && ( device.ucBatteryLow  == 0x00 ))
+                {
+                    device.ucPulseOn &= 0xfd;
+                    last_status = 0x03;
+                }
+                device.ucBatteryLow = 0x55;
+                beep_on();
+                osDelay(100);
+                beep_off();
+                osDelay(900);
+            }
+            break;
+        default:
+            break;
+    }
+
+    if ((device.ucPulseOn&0x01) || ( device.ucPulseOn&0x02)) 
+    {
+        led_period_cnt[0] ++;
+		if(led_period_cnt[0]>1500)
+			led_period_cnt[0] = 0;
+        else if ( led_period_cnt[0] < 500)
+            led2_on();
+        else
+            led2_off();
+    } 
+    else
+    {
+        ProcessKeyBord(&device);
+    }
+    
+    if ( ( device.ucKeyValue == KEYENT_SHORT) && (device.ucKeyStatus== 0) && ( device.ucRunningStatus == 0x00))
+    {
+        device.ucKeyValue = 0;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        device.ucPulseOn = 0x03;
+    }
+    else if ( ( device.ucKeyValue == KEYENT_SHORT) && (device.ucKeyStatus== 0) && ( device.ucRunningStatus == 0x03 ))
+    {
+        device.ucKeyValue = 0;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+
+        device.ucPulseOn = 0x00;
+
+    }
+    else if ( ( device.ucKeyValue  == KEYENT_SHORT) && ( device.ucKeyStatus== 0) && ( device.ucRunningStatus == 0x01 ))
+    {
+        device.ucKeyValue = 0;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        device.ucPulseOn = 0x00;
+    }
+    else if ( ( device.ucKeyValue  == KEYENT_SHORT) && ( device.ucKeyStatus== 0) && ( device.ucRunningStatus == 0x02 ))
+    {
+        device.ucKeyValue = 0;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        
+        device.ucPulseOn = 0x00;
+    }
+    else if ((device.ucSetAlarm[0] == 0xaa ) && ( device.ucSetAlarm[1] == 0xaa ) && ( device.ucKeyStatus== 0) && ( device.ucRunningStatus == 0x00))
+    {
+        device.ucSetAlarm[0] = 0;
+        device.ucSetAlarm[1]= 0;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        device.ucPulseOn = 0x03;
+
+    }
+    
+    else if (( device.ucSetAlarm[0] == 0xaa ) && ( device.ucKeyStatus== 0) && ( (device.ucRunningStatus&0x01)== 0 ))
+    {
+        device.ucSetAlarm[0] = 0;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        device.ucPulseOn |= 0x01;
+    }
+    else if (( device.ucSetAlarm[1] == 0xaa ) && ( device.ucKeyStatus== 0) && ((device.ucRunningStatus & 0x02) == 0 ))
+    {
+        device.ucSetAlarm[1]= 0;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        device.ucPulseOn |=  0x02;
+    }
+    else if (( device.ucSetAlarm[0] == 0x55) && ( device.ucSetAlarm[1] == 0x55 ) && ( device.ucKeyStatus== 0) && ( device.ucRunningStatus == 0x03 ))
+    {
+        device.ucSetAlarm[0] = 0x00;
+        device.ucSetAlarm[1] = 0x00;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        device.ucPulseOn = 0x00;
+    }
+    else if (( device.ucSetAlarm[0] == 0x55) && ( device.ucRunningStatus&0x01 ) && (   device.ucKeyStatus== 0 ) )
+    {
+        device.ucSetAlarm[0] = 0x00;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+        device.ucPulseOn &= 0xfe;
+    }
+    else if (( device.ucSetAlarm[1] == 0x55 ) && ( device.ucRunningStatus&0x02) && ( device.ucKeyStatus== 0 ) )
+    {
+        device.ucSetAlarm[1] = 0x00;
+        device.ucLcdOnTime = 120;
+        lcd_backup_on();
+
+        device.ucPulseOn &= 0xfd;
+    }
+
+    //alarm handle
+    for(uint8_t i=0;i<4;i++)
+    {
+        if (device.ucAlarmStatus&(1<<i))  
+        {
+            beep_on();
+			beepon_delay_cnt[i] = 0;
+		}
+		else if(ucBeepAlarmFlag&(1<<i))
+		{
+			beepon_delay_cnt[i]++;
+            if(beepon_delay_cnt[i] >= device.ucBeepOnTime)
+            {
+                
+                ucBeepAlarmFlag &= ~(1<<i);
+                beepon_delay_cnt[i] = device.ucBeepOnTime;
+				if(ucBeepAlarmFlag == 0x00)
+					beep_off();
+            }
+		}
+		if(device.ucAlarmStatus&(1<<i))
+		{
+            Relay_SetBit(i,GPIO_PIN_SET);
+            relayon_delay_cnt[i] = 0;
+        }
+		else if(ucRelayAlarmFlag&(1<<i))
+		{
+			relayon_delay_cnt[i]++;
+            if(relayon_delay_cnt[i] >= device.ucRelayOnTime)
+            {
+                relayon_delay_cnt[i] = device.ucRelayOnTime;
+				ucRelayAlarmFlag &= ~(1<<i);
+				if(i<2)
+				{
+					if((ucRelayAlarmFlag&0x03) ==0x00)
+					Relay_SetBit(i,GPIO_PIN_RESET);
+				}
+				else
+					Relay_SetBit(i,GPIO_PIN_RESET);
+            }	
+		}
+
+    }
+	#if DUAL_DEFENCE != 1
+    device.ucPulseOn &= 0x01;
+    #endif 
+    if((device.ucPulseOn ^ device.ucRunningStatus)||device.ucForceSync)
+    {
+        xPulseInData.ucPulseOn =device.ucPulseOn;
+		xPulseInData.ucAlarmCycle = device.ucAlarmCycle;
+        xPulseInData.ucTouchEN = device.ucTouchEN;
+        
+		if(device.ucSetVoltage[0]<10)
+			device.ucSetVoltage[0] =9;
+		else if (device.ucSetVoltage[0]>65)
+			device.ucSetVoltage[0] =65;
+		if(device.ucSetVoltage[1]<10)
+			device.ucSetVoltage[1] =9;
+		else if (device.ucSetVoltage[1]>65)
+			device.ucSetVoltage[1] =65;
+		
+        xPulseInData.ucSetVoltage[0] = device.ucSetVoltage[0];
+        xPulseInData.ucSetVoltage[1] = device.ucSetVoltage[1];
+		
+        osMessageQueuePut(xPulseInQueue,&xPulseInData,0,NULL);
+		if((ucPulseOnLast != device.ucPulseOn)||device.ucForceSync)
+		{
+			xEEpromWriteData.ucCmd = 0x02;
+			xEEpromWriteData.ucData[0] = device.ucPulseOn;
+			xEEpromWriteData.ucData[1] = device.ucSetVoltage[0];
+			xEEpromWriteData.ucData[2] = device.ucSetVoltage[1];
+			osMessageQueuePut(xEEWriteMsg,&xEEpromWriteData,0,NULL);
+			device.ucForceSync = 0x00;
+			ucPulseOnLast = xPulseInData.ucPulseOn;
+		}
+		
+    }
+	
+	uiRunningTime++; 
+	if((uiRunningTime == 1000)&&(!bCheckEnable))
+	{
+		device.ucPowerOnTime = AT24CXX_ReadOneByte( POWERON_CNT );
+		device.ucPowerOnTime = device.ucPowerOnTime +1;
+        
+		xEEpromWriteData.ucCmd = 0x05;
+		xEEpromWriteData.ucData[0] = device.ucPowerOnTime;
+		osMessageQueuePut(xEEWriteMsg,&xEEpromWriteData,0,NULL);
+	}
+	else if(uiRunningTime >=5000)  //5s
+	{
+		uiRunningTime = 0x00;
+		bCheckEnable = 0x01;
+		if(++device.ucRunningMs>= 12)
+        {
+			device.ucRunningMs = 0x00;
+			device.ucRunningMin++;
+//			AT24CXX_WriteOneByte (EE_MIN, device.ucRunningMin);
+			if(device.ucRunningMin>=60)
+			{ 
+				device.ucRunningMin = 0x00;
+				device.ucRunningHour++;
+//				AT24CXX_WriteOneByte (EE_HOUR, device.ucRunningHour);
+				if(device.ucRunningHour>=24)
+				{
+					device.ucRunningHour = 0x00;
+					device.uiRunningDate++;
+//					AT24CXX_WriteOneByte (EE_DATE, device.uiRunningDate/256);
+//					AT24CXX_WriteOneByte (EE_DATE+1, device.uiRunningDate%256);
+					if(device.uiRunningDate>=365)
+					{
+						device.uiRunningDate = 0x00;
+						device.ucRunningYear++;
+//						AT24CXX_WriteOneByte (EE_YEAR, device.ucRunningYear);
+					}
+				}
+			}
+			xEEpromWriteData.ucCmd = 0x04;
+		    xEEpromWriteData.ucData[0] = device.ucRunningMin;
+			xEEpromWriteData.ucData[1] = device.ucRunningHour;
+			xEEpromWriteData.ucData[2] = device.uiRunningDate/256;
+			xEEpromWriteData.ucData[3] = device.uiRunningDate%256;
+			xEEpromWriteData.ucData[4] = device.ucRunningYear;
+		    osMessageQueuePut(xEEWriteMsg,&xEEpromWriteData,0,NULL);	
+		}
+	}
+	osDelay(1);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+
+/* USER CODE END Application */
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

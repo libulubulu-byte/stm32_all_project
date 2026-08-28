@@ -1,0 +1,63 @@
+*** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'Efence'
+compiling usart.c...
+../Src/usart.c(475): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[0] == 0xAA)    //short alarm 
+../Src/usart.c(479): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[0] == 0x55)    //open alarm
+../Src/usart.c(486): error:  #142: expression must have pointer-to-object type
+                if (pd->ucAlarmStatus[1] == 0x00)
+../Src/usart.c(490): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[1] == 0xAA)
+../Src/usart.c(494): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[1] == 0x55)
+../Src/usart.c(500): error:  #142: expression must have pointer-to-object type
+                if (pd->ucAlarmStatus[0] == 0x00)
+../Src/usart.c(504): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[0] == 0xAA)
+../Src/usart.c(508): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[0] == 0x55)
+../Src/usart.c(512): error:  #142: expression must have pointer-to-object type
+                if (pd->ucAlarmStatus[1] == 0x00)
+../Src/usart.c(516): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[1] == 0xAA)
+../Src/usart.c(520): error:  #142: expression must have pointer-to-object type
+                else if (pd->ucAlarmStatus[1] == 0x55)
+../Src/usart.c(528): error:  #20: identifier "POWER_FIRSTON" is undefined
+            ucxTxMsgBuf[ 11 ] = POWER_FIRSTON;
+../Src/usart.c(530): error:  #136: struct "<unnamed>"  has no field "ucIRStatus"
+            ucxTxMsgBuf[ 13 ] = pd->ucIRStatus;
+../Src/usart.c(574): error:  #136: struct "<unnamed>"  has no field "bRunning"
+              if (  pd->bRunning[0] == 0 )
+../Src/usart.c(576): error:  #20: identifier "fqSTATUS" is undefined
+                fqSTATUS.FQ1BUFANG = 0xAA ;
+../Src/usart.c(580): error:  #136: struct "<unnamed>"  has no field "bRunning"
+                if (  pd->bRunning[0] )
+../Src/usart.c(581): error:  #20: identifier "fqSTATUS" is undefined
+                  fqSTATUS.FQ1CHEFANG = 0xAA;
+../Src/usart.c(585): error:  #136: struct "<unnamed>"  has no field "bRunning"
+                if (  pd->bRunning[1] == 0 )
+../Src/usart.c(587): error:  #20: identifier "fqSTATUS" is undefined
+                  fqSTATUS.FQ2BUFANG = 0xAA ;
+../Src/usart.c(591): error:  #136: struct "<unnamed>"  has no field "bRunning"
+                  if (  pd->bRunning[1] )
+../Src/usart.c(592): error:  #20: identifier "fqSTATUS" is undefined
+                    fqSTATUS.FQ2CHEFANG = 0xAA;
+../Src/usart.c(659): error:  #136: struct "<unnamed>"  has no field "ucTamperEN"
+              pd->ucTamperEN = ucxTxMsgBuf[ 8 ] ;      
+../Src/usart.c: 0 warnings, 22 errors
+compiling freertos.c...
+../Src/freertos.c(363): error:  #20: identifier "fqSTATUS" is undefined
+          else if (( fqSTATUS.FQ1BUFANG == 0xaa ) && ( fqSTATUS.FQ2BUFANG == 0xaa ) && ( device.ucKeyStatus== 0) && ( device.ucRunningStatus == 0x00))
+../Src/freertos.c(144): warning:  #550-D: variable "bCheckEnable"  was set but never used
+    uint8_t bCheckEnable;
+../Src/freertos.c(151): warning:  #177-D: variable "lcd_update_flag"  was declared but never referenced
+    uint8_t lcd_update_flag;
+../Src/freertos.c(155): warning:  #177-D: variable "guidata"  was declared but never referenced
+    DISP guidata;
+../Src/freertos.c: 3 warnings, 1 error
+compiling powerpulse.c...
+compiling Func.c...
+"Efence\Efence.axf" - 23 Error(s), 3 Warning(s).
+Target not created.
+Build Time Elapsed:  00:00:03

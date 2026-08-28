@@ -1,0 +1,14 @@
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/stream_buffer.c
+.\efence\stream_buffer.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stdint.h
+.\efence\stream_buffer.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\string.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+.\efence\stream_buffer.o: D:\Keil_v5\ARM\version5.06\Bin\..\include\stddef.h
+.\efence\stream_buffer.o: ../Inc/FreeRTOSConfig.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/portmacro.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/task.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h
+.\efence\stream_buffer.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/stream_buffer.h

@@ -1,0 +1,356 @@
+#include "main.h"
+#include "cmsis_os.h"
+#include "disp.h"
+
+#include "stdio.h"
+#include "var.h"
+
+extern DEVICEDATA device;
+extern uint8_t Uart4RstFlag;
+extern uint16_t Uart4RstCnt;
+
+extern uint8_t Uart1RstFlag;
+extern uint16_t Uart1RstCnt;
+
+extern void UART_Init(uint32_t bps);
+
+void lcd_show(DISPLAY* pDat)
+{
+    uint8_t dis[20];
+
+    // always on
+    DataBuf.gVar_Buf[0] |= (1 << 3);//ºá¸Ë
+
+    if(pDat->ucRunningCnt == 0x00)
+    {
+
+        if(pDat->ucAlarmFlag & 0x01)
+            DataBuf.gVar_Buf[0] |= (1 << 4);
+        else
+            DataBuf.gVar_Buf[0] &= 0xEF;
+
+        if(pDat->ucAlarmFlag)  // speaker ir alarm
+            DataBuf.gVar_Buf[0] ^= (1 << 5);
+        else
+            DataBuf.gVar_Buf[0] |= (1 << 5);
+
+        if(pDat->ucAlarmFlag & 0x04)  // fq1
+            DataBuf.gVar_Buf[0] ^= (1 << 0);
+        else
+            DataBuf.gVar_Buf[0] |= (1 << 0);
+
+        if(DUAL_DEFENCE == 1)
+        {
+            if(pDat->ucAlarmFlag & 0x08)  // fq2
+                DataBuf.gVar_Buf[0] ^= (1 << 2);
+            else
+                DataBuf.gVar_Buf[0] |= (1 << 2);
+        }
+        else
+            DataBuf.gVar_Buf[0] &= ~(1 << 2);
+
+
+        //ÊÐµçµçÔ´Çé¿öÅÐ¶Ï
+        if((pDat->ucPowerStatus & 0xfe) == 0x00)  // vdc are normal
+        {
+            DataBuf.gVar_Buf[0] |= (1 << 7);
+            DataBuf.gVar_Buf[0] &= ~(1 << 6);
+        }
+        else if(pDat->ucPowerStatus == 0x02)  // vdc is low vbak is normal
+        {
+            DataBuf.gVar_Buf[0] |= (1 << 6);
+            DataBuf.gVar_Buf[0] &= ~(1 << 7);
+        }
+        else if(pDat->ucPowerStatus == 0x03)  // vdc and vbak are low
+        {
+            DataBuf.gVar_Buf[0] ^= (1 << 6);
+            DataBuf.gVar_Buf[0] &= ~(1 << 7);
+        }
+    }
+
+    if(DUAL_DEFENCE == 1)
+    {
+        dis[0] = Lcd_Seg[pDat->ucVoltage[1] / 10];
+        dis[1] = Lcd_Seg[pDat->ucVoltage[1] % 10];
+
+        if(pDat->bOnSetting)
+        {
+            if(pDat->ucActiveSetting == 1)
+            {
+                if(pDat->bOnBlink)
+                {
+                    dis[6] = Lcd_Seg1[pDat->ucSetVoltage[0] / 10];
+                    dis[7] = Lcd_Seg1[pDat->ucSetVoltage[0] % 10];
+                }
+                else
+                {
+                    dis[6] = 0x00;
+                    dis[7] = 0x00;
+                }
+
+                dis[2] = Lcd_Seg[pDat->ucSetVoltage[1] / 10];
+                dis[3] = Lcd_Seg[pDat->ucSetVoltage[1] % 10];
+            }
+            else if(pDat->ucActiveSetting == 2)
+            {
+                if(pDat->bOnBlink)
+                {
+                    dis[2] = Lcd_Seg[pDat->ucSetVoltage[1] / 10];
+                    dis[3] = Lcd_Seg[pDat->ucSetVoltage[1] % 10];
+                }
+                else
+                {
+                    dis[2] = 0x00;
+                    dis[3] = 0x00;
+                }
+
+                dis[6] = Lcd_Seg1[pDat->ucSetVoltage[0] / 10];
+                dis[7] = Lcd_Seg1[pDat->ucSetVoltage[0] % 10];
+            }
+        }
+        else
+        {
+            dis[2] = Lcd_Seg[pDat->ucSetVoltage[1] / 10];
+            dis[3] = Lcd_Seg[pDat->ucSetVoltage[1] % 10];
+
+            dis[6] = Lcd_Seg1[pDat->ucSetVoltage[0] / 10];
+            dis[7] = Lcd_Seg1[pDat->ucSetVoltage[0] % 10];
+        }
+
+        //    short_current = Current_Tab[pDat->ucSetVoltage[1] ];
+        dis[4] = Lcd_Seg[pDat->ucCurrent[1] / 10];
+        dis[5] = Lcd_Seg[pDat->ucCurrent[1] % 10];
+    }
+    else
+    {
+        // disable display of defence 2
+        dis[0] = 0;
+        dis[1] = 0;
+
+        if(pDat->bOnSetting)
+        {
+            if(pDat->ucActiveSetting == 1)
+            {
+                if(pDat->bOnBlink)
+                {
+                    dis[6] = Lcd_Seg1[pDat->ucSetVoltage[0] / 10];
+                    dis[7] = Lcd_Seg1[pDat->ucSetVoltage[0] % 10];
+                }
+                else
+                {
+                    dis[6] = 0x00;
+                    dis[7] = 0x00;
+                }
+            }
+
+            dis[2] = 0;
+            dis[3] = 0;
+        }
+        else
+        {
+            dis[6] = Lcd_Seg1[pDat->ucSetVoltage[0] / 10];
+            dis[7] = Lcd_Seg1[pDat->ucSetVoltage[0] % 10];
+            // disable defence 2 voltage
+            dis[2] = 0;
+            dis[3] = 0;
+        }
+
+        // disable defence 2 current
+        dis[4] = 0;
+        dis[5] = 0;
+
+    }
+
+    //    short_current = Current_Tab[pDat->ucSetVoltage[0] ];
+    dis[8] = Lcd_Seg1[pDat->ucCurrent[0] / 10];
+    dis[9] = Lcd_Seg1[pDat->ucCurrent[0] % 10];
+
+    DataBuf.DisBuf1[0] = (DataBuf.gVar_Buf[0] & 0xf0) + ((dis[0] & 0xf0) >> 4); //Ç°4Î» S13 S15 S14 S13 ï¿½ï¿½4Î»Îªï¿½ï¿½ï¿½ï¿½2ï¿½ï¿½ï¿½ï¿½ï¿?
+    DataBuf.DisBuf1[1] = ((dis[0] & 0x0f) << 4) + ((dis[1] & 0xf0) >> 4);
+    DataBuf.DisBuf1[2] = ((dis[1] & 0x0f) << 4) + ((dis[2] & 0xf0) >> 4);
+    DataBuf.DisBuf1[3] = ((dis[2] & 0x0f) << 4) + ((dis[3] & 0xf0) >> 4);
+    DataBuf.DisBuf1[4] = ((dis[3] & 0x0f) << 4) + ((dis[4] & 0xf0) >> 4);
+    DataBuf.DisBuf1[5] = ((dis[4] & 0x0f) << 4) + ((dis[5] & 0xf0) >> 4);
+    DataBuf.DisBuf1[6] = ((dis[5] & 0x0f) << 4) + (DataBuf.gVar_Buf[0] & 0x0f);
+    DataBuf.DisBuf1[7] = ((dis[6] & 0x0f) << 4) + ((dis[7] & 0xf0) >> 4);
+    DataBuf.DisBuf1[8] = ((dis[7] & 0x0f) << 4) + ((dis[8] & 0xf0) >> 4);
+    DataBuf.DisBuf1[9] = ((dis[8] & 0x0f) << 4) + ((dis[9] & 0xf0) >> 4);
+    DataBuf.DisBuf1[10] = ((dis[9] & 0x0f) << 4) + 0;
+
+    dis[11] = Lcd_Seg2[pDat->ucVoltage[0] / 10]; // display the first defence area voltage
+    dis[10] = Lcd_Seg2[pDat->ucVoltage[0] % 10];
+
+    dis[13] = Lcd_Seg2[pDat->ucRunningHour / 10]; // total running time hours
+    dis[12] = Lcd_Seg2[pDat->ucRunningHour % 10];
+
+    dis[16] = Lcd_Seg2[pDat->uiRunningDate / 100]; // total runing date
+    dis[15] = Lcd_Seg2[pDat->uiRunningDate % 100 / 10];
+    dis[14] = Lcd_Seg2[pDat->uiRunningDate % 10];
+
+    dis[18] = Lcd_Seg2[pDat->ucRunningYear / 10]; // total running years
+    dis[17] = Lcd_Seg2[pDat->ucRunningYear % 10];
+
+    DataBuf.DisBuf2[0] = ((dis[6] & 0xf0) + (dis[10] & 0x0f)) | 0x08;
+
+    DataBuf.DisBuf2[1] = ((dis[10] & 0xf0) + (dis[11] & 0x0f)) | 0x08;
+
+    //        if( pDat->bDeviceFlag == 0xAA)
+    //            DataBuf.DisBuf2[2] = ((dis [ 11 ] & 0xf0) + (dis [ 12 ] & 0x0f)) | 0x08;         //|0x08
+    //        else
+    //     DataBuf.DisBuf2[2] = ((dis [ 11 ] & 0xf0) + (dis [ 12 ] & 0x0f));
+
+    DataBuf.DisBuf2[2] = ((dis[11] & 0xf0) + (dis[12] & 0x07));//²»ÏÔÊ¾JOOSEEÍ¼±ê
+
+    //        DataBuf.DisBuf2[2] = ((dis [ 11 ] & 0xf0) + (dis [ 12 ] & 0x0f)) | 0x08;//ÏÔÊ¾JOOSEEÍ¼±ê
+
+    DataBuf.DisBuf2[3] = ((dis[12] & 0xf0) + (dis[13] & 0x0f)) | 0x08 ;
+
+    if(pDat->ucRunningStatus)
+    {
+        if(pDat->ucMovingPosition == 0)
+        {
+            DataBuf.DisBuf2[4] = (dis[13] & 0xf0) + (dis[14] & 0x0f);
+            DataBuf.DisBuf2[5] = (dis[14] & 0xf0) + (dis[15] & 0x0f);
+            DataBuf.DisBuf2[6] = (dis[15] & 0xf0) + (dis[16] & 0x0f);
+            DataBuf.DisBuf2[7] = (dis[16] & 0xf0) + (dis[17] & 0x0f);
+            DataBuf.DisBuf2[8] = ((dis[17] & 0xf0) + (dis[18] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[9] = (dis[18] & 0xf0) + 0x0e;
+        }
+        else if(pDat->ucMovingPosition == 1)
+        {
+            DataBuf.DisBuf2[4] = ((dis[13] & 0xf0) + (dis[14] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[5] = (dis[14] & 0xf0) + (dis[15] & 0x0f);
+            DataBuf.DisBuf2[6] = (dis[15] & 0xf0) + (dis[16] & 0x0f);
+            DataBuf.DisBuf2[7] = (dis[16] & 0xf0) + (dis[17] & 0x0f);
+            DataBuf.DisBuf2[8] = ((dis[17] & 0xf0) + (dis[18] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[9] = (dis[18] & 0xf0) + 0x06;
+        }
+        else if(pDat->ucMovingPosition == 2)
+        {
+            DataBuf.DisBuf2[4] = (dis[13] & 0xf0) + (dis[14] & 0x0f);
+            DataBuf.DisBuf2[5] = ((dis[14] & 0xf0) + (dis[15] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[6] = (dis[15] & 0xf0) + (dis[16] & 0x0f);
+            DataBuf.DisBuf2[7] = (dis[16] & 0xf0) + (dis[17] & 0x0f);
+            DataBuf.DisBuf2[8] = ((dis[17] & 0xf0) + (dis[18] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[9] = (dis[18] & 0xf0) + 0x06;
+        }
+        else if(pDat->ucMovingPosition == 3)
+        {
+            DataBuf.DisBuf2[4] = (dis[13] & 0xf0) + (dis[14] & 0x0f);
+            DataBuf.DisBuf2[5] = (dis[14] & 0xf0) + (dis[15] & 0x0f);
+            DataBuf.DisBuf2[6] = ((dis[15] & 0xf0) + (dis[16] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[7] = (dis[16] & 0xf0) + (dis[17] & 0x0f);
+            DataBuf.DisBuf2[8] = ((dis[17] & 0xf0) + (dis[18] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[9] = (dis[18] & 0xf0) + 0x06;
+        }
+        else if(pDat->ucMovingPosition == 4)
+        {
+            DataBuf.DisBuf2[4] = (dis[13] & 0xf0) + (dis[14] & 0x0f);
+            DataBuf.DisBuf2[5] = (dis[14] & 0xf0) + (dis[15] & 0x0f);
+            DataBuf.DisBuf2[6] = (dis[15] & 0xf0) + (dis[16] & 0x0f);
+            DataBuf.DisBuf2[7] = ((dis[16] & 0xf0) + (dis[17] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[8] = ((dis[17] & 0xf0) + (dis[18] & 0x0f)) | 0x08;
+            DataBuf.DisBuf2[9] = (dis[18] & 0xf0) + 0x06;
+        }
+    }
+    else
+    {
+        DataBuf.DisBuf2[4] = (dis[13] & 0xf0) + (dis[14] & 0x0f);
+        DataBuf.DisBuf2[5] = (dis[14] & 0xf0) + (dis[15] & 0x0f);
+        DataBuf.DisBuf2[6] = (dis[15] & 0xf0) + (dis[16] & 0x0f);
+        DataBuf.DisBuf2[7] = (dis[16] & 0xf0) + (dis[17] & 0x0f);
+        DataBuf.DisBuf2[8] = ((dis[17] & 0xf0) + (dis[18] & 0x0f)) | 0x08;
+        DataBuf.DisBuf2[9] = (dis[18] & 0xf0) + 0x06;
+    }
+
+    if(DUAL_DEFENCE != 1)
+
+        DataBuf.DisBuf2[9] = DataBuf.DisBuf2[9] & 0xfb;
+
+    Disp();
+}
+
+void vDisplayTask(void* argument)
+{
+    DISPLAY xLcdShow;
+
+    DEVICEDATA* pd;
+    pd = (DEVICEDATA*)argument;
+
+    LCD_Init();
+    pd->ucLcdOnTime = 120;
+    lcd_backup_on();
+#if Debug_flag
+    printf("lcd task init success");
+#endif
+
+
+    for(;;)
+    {
+        xLcdShow.bOnSetting = pd->bOnSetting;
+        xLcdShow.ucActiveSetting = pd->ucKeyStatus;
+        xLcdShow.ucAlarmFlag = pd->ucAlarmStatus;
+        xLcdShow.ucAlarmType = pd->ucAlarmType;
+        xLcdShow.ucPowerStatus = pd->ucPowerStatus;
+        xLcdShow.ucRunningStatus = pd->ucRunningStatus;
+        xLcdShow.ucSetVoltage[0] = pd->ucSetVoltage[0];
+        xLcdShow.ucSetVoltage[1] = pd->ucSetVoltage[1];
+        xLcdShow.ucVoltage[0] = pd->ucVoltage[0];
+        xLcdShow.ucVoltage[1] = pd->ucVoltage[1];
+        xLcdShow.ucCurrent[0] = pd->ucCurrent[0];
+        xLcdShow.ucCurrent[1] = pd->ucCurrent[1];
+        xLcdShow.ucRunningHour = pd->ucRunningHour;
+        xLcdShow.uiRunningDate = pd->uiRunningDate;
+        xLcdShow.ucRunningYear = pd->ucRunningYear;
+        xLcdShow.bDeviceFlag = pd->bDeviceFlag;
+
+        if(++xLcdShow.ucRunningCnt > 60)  // 0.5s
+        {
+            xLcdShow.ucRunningCnt = 0x00;
+            xLcdShow.ucMovingPosition++;
+
+            if(xLcdShow.ucMovingPosition > 4)
+            {
+                xLcdShow.ucMovingPosition = 0;
+            }
+
+            if(xLcdShow.ucActiveSetting)
+                xLcdShow.bOnBlink = !xLcdShow.bOnBlink;
+
+            if(pd->ucLcdOnTime)
+            {
+                pd->ucLcdOnTime--;
+            }
+            else
+            {
+                lcd_backup_off();
+            }
+
+            PCF8562_Init(PCF8562_ADDR, 0x08, 0x00);
+            PCF8562_Init(PCF8562_ADDR, 0x08, 0x00);
+            HT16C22_Init();
+            HT16C22_Init();
+        }
+
+        lcd_show(&xLcdShow);
+		
+        Uart4RstCnt ++;
+
+        if((Uart4RstCnt > 250) && (Uart4RstFlag == 1))  //580
+        {
+            Uart4RstCnt = 0;
+            //          UART_Init(device.uiBaudrate);
+            HAL_NVIC_SystemReset();
+        }
+
+        Uart1RstCnt ++;
+
+        if((Uart1RstCnt > 3300) && (Uart1RstFlag == 1))  //50S
+        {
+            Uart1RstCnt = 0;
+            HAL_NVIC_SystemReset();
+        }
+
+        osDelay(12);
+    }
+}

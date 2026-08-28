@@ -1,0 +1,1180 @@
+/**
+  ******************************************************************************
+  * File Name          : USART.c
+  * Description        : This file provides code for the configuration
+  *                      of the USART instances.
+  ******************************************************************************
+  * @attention
+  *
+  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+  * All rights reserved.</center></h2>
+  *
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
+  *
+  ******************************************************************************
+  */
+
+/* Includes ------------------------------------------------------------------*/
+#include "usart.h"
+#include "uart_tcp.h"
+
+/* USER CODE BEGIN 0 */
+#include "stdio.h"
+
+//#include "ds1302.h"
+#include "var.h"
+
+Uart_Msg_TypeDef uPort;
+uint8_t ucDataLength;
+uint8_t ucAddress;
+osMessageQueueId_t xFromUpStreamMsg;
+
+#ifdef __GNUC__
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif
+PUTCHAR_PROTOTYPE
+{
+    HAL_UART_Transmit(&huart6, (uint8_t *)&ch, 1, 0xFF);
+    return ch;
+}
+/* USER CODE END 0 */
+
+UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart6;
+
+/* UART4 init function */
+void MX_UART4_Init(uint32_t bps)
+{
+    huart4.Instance = UART4;
+    huart4.Init.BaudRate = 38400;
+    huart4.Init.WordLength = UART_WORDLENGTH_8B;
+    huart4.Init.StopBits = UART_STOPBITS_1;
+    huart4.Init.Parity = UART_PARITY_NONE;
+    huart4.Init.Mode = UART_MODE_TX_RX;
+    huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart4.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&huart4) != HAL_OK)
+    {
+        Error_Handler();
+    }
+}
+
+/* USART6 init function */
+
+void MX_USART6_UART_Init(void)
+{
+    huart6.Instance = USART6;
+    huart6.Init.BaudRate = 115200;
+    huart6.Init.WordLength = UART_WORDLENGTH_8B;
+    huart6.Init.StopBits = UART_STOPBITS_1;
+    huart6.Init.Parity = UART_PARITY_NONE;
+    huart6.Init.Mode = UART_MODE_TX_RX;
+    huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart6.Init.OverSampling = UART_OVERSAMPLING_16;
+    if (HAL_UART_Init(&huart6) != HAL_OK)
+    {
+        Error_Handler();
+    }
+}
+
+void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    if(uartHandle->Instance == UART4)
+    {
+        /* UART4 clock enable */
+        __HAL_RCC_UART4_CLK_ENABLE();
+        __HAL_RCC_GPIOC_CLK_ENABLE();
+        /**UART4 GPIO Configuration
+        PC10     ------> UART4_TX
+        PC11     ------> UART4_RX
+        */
+        GPIO_InitStruct.Pin = GPIO_PIN_10 | GPIO_PIN_11;
+        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull = GPIO_PULLUP;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Alternate = GPIO_AF8_UART4;
+        HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+        /* UART4 interrupt Init */
+        HAL_NVIC_SetPriority(UART4_IRQn, 5, 0);
+        HAL_NVIC_EnableIRQ(UART4_IRQn);
+    }
+
+    else if(uartHandle->Instance == USART6)
+    {
+        /* USART6 clock enable */
+        __HAL_RCC_USART6_CLK_ENABLE();
+        __HAL_RCC_GPIOC_CLK_ENABLE();
+        /**USART6 GPIO Configuration
+        PC6     ------> USART6_TX
+        PC7     ------> USART6_RX
+        */
+        GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7;
+        GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Alternate = GPIO_AF8_USART6;
+        HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+    }
+}
+
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if(huart->ErrorCode & HAL_UART_ERROR_ORE)
+    {
+        __HAL_UART_CLEAR_OREFLAG(huart);
+    }
+}
+
+void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
+{
+
+    if(uartHandle->Instance == UART4)
+    {
+        /* Peripheral clock disable */
+        __HAL_RCC_UART4_CLK_DISABLE();
+
+        /**UART4 GPIO Configuration
+        PC10     ------> UART4_TX
+        PC11     ------> UART4_RX
+        */
+        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_10 | GPIO_PIN_11);
+
+        /* UART4 interrupt Deinit */
+        HAL_NVIC_DisableIRQ(UART4_IRQn);
+    }
+
+    else if(uartHandle->Instance == USART6)
+    {
+        /* Peripheral clock disable */
+        __HAL_RCC_USART6_CLK_DISABLE();
+
+        /**USART6 GPIO Configuration
+        PC6     ------> USART6_TX
+        PC7     ------> USART6_RX
+        */
+        HAL_GPIO_DeInit(GPIOC, GPIO_PIN_6 | GPIO_PIN_7);
+    }
+}
+
+/* USER CODE BEGIN 1 */
+unsigned int crc16(unsigned char *puchMsg, unsigned int usDataLen)
+{
+    unsigned char i;
+    unsigned char uchCRCHL = 0x00 ;
+    unsigned int  uIndex = 0x00;
+    for (i = 0; i < usDataLen; i++)
+    {
+        uIndex = uIndex + *puchMsg++ ;
+    }
+    uchCRCHL = uIndex % 256;
+    return (uchCRCHL) ;
+}
+
+/*****************************************************************/
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+//	uint8_t ucCRCH,ucCRCL;
+    uint8_t ucCRCL;
+    uint16_t uiCRC;
+//    Uart_Msg_TypeDef *pxRecvMsg;
+
+    if(huart->Instance == USART1)
+    {
+        HAL_UART1_RxCallBack();
+    }
+    else if(huart->Instance == UART4)
+    {
+//        pxRecvMsg = &uPort;
+
+        switch (uPort.ucRxCnt)
+        {
+        case 0x00:
+            if (uPort.ucRxData == 0xA3)
+                uPort.ucMsgBuf[uPort.ucRxCnt++] = uPort.ucRxData ;
+            else
+            {
+                uPort.ucRxCnt = 0x00;
+                uPort.ucMsgBuf[0] = 0x00;
+            }
+            break;
+
+        case 0x01://local address
+            if (ucAddress == uPort.ucRxData)
+            {
+                uPort.ucMsgBuf[uPort.ucRxCnt++] = uPort.ucRxData ;
+            }
+            else
+            {
+                uPort.ucRxCnt = 0x00;
+                uPort.ucMsgBuf[1] = 0x00;
+            }
+            break;
+
+        case 0x02:     //source address
+            if (uPort.ucRxData == 0xFE)
+                uPort.ucMsgBuf[uPort.ucRxCnt++] = uPort.ucRxData ;
+            else
+            {
+                uPort.ucRxCnt = 0x00;
+                uPort.ucMsgBuf[2] = 0x00;
+            }
+            break;
+
+        case 0x03:     //command
+            uPort.ucMsgBuf[uPort.ucRxCnt++] = uPort.ucRxData ;
+            break;
+
+        case 0x04://length
+            ucDataLength = uPort.ucRxData;
+            if(ucDataLength >= 16)
+            {
+                uPort.ucRxCnt = 0x00;
+                uPort.ucRxData = 0x00;
+                for(uint8_t i = 0; i < 16; i++)
+                {
+                    uPort.ucMsgBuf[i] = 0x00;
+                }
+            }
+            else
+            {
+                uPort.ucMsgBuf[uPort.ucRxCnt++] = uPort.ucRxData ;
+            }
+            break;
+        default:
+            uPort.ucMsgBuf[uPort.ucRxCnt++] = uPort.ucRxData ;
+            if (ucDataLength == uPort.ucRxCnt)
+            {
+                uPort.ucRxCnt = 0;
+                uiCRC = crc16( uPort.ucMsgBuf, ucDataLength - 1);
+                ucCRCL = uiCRC % 256;
+                if (uPort.ucMsgBuf[ucDataLength - 1] == ucCRCL)//CRC校验检测判断
+                {
+                    osMessageQueuePut (xFromUpStreamMsg, &uPort, 0, NULL);
+                }
+                else
+                {
+                    uint8_t ucxTxMsgBuf[10];
+                    ucxTxMsgBuf[0] =  0xA3;
+                    ucxTxMsgBuf[1] =  uPort.ucMsgBuf[2];
+                    ucxTxMsgBuf[2] =  ucAddress;
+                    ucxTxMsgBuf[3] =  uPort.ucMsgBuf[3];
+                    ucxTxMsgBuf[4] =  0x07;
+                    ucxTxMsgBuf[5] =  0x02;
+                    ucxTxMsgBuf[6] =  crc16( ucxTxMsgBuf, 6);
+                    UART_SendData(ucxTxMsgBuf, 7);
+                    uPort.ucRxData = 0x00;
+                    for(uint8_t i = 0; i < 16; i++)
+                    {
+                        uPort.ucMsgBuf[i] = 0x00;
+                    }
+                }
+            }
+            break;
+        }
+        while(HAL_UART_Receive_IT(huart, (uint8_t *)&uPort.ucRxData, 1) == HAL_OK);
+    }
+//    if (HAL_UART_Receive_IT(huart, (uint8_t *)&uPort.ucRxData, 1) != HAL_OK)
+//    {
+//        HAL_UART_ErrorCallback(huart);
+//    }
+}
+
+void UART_Init(uint32_t bps)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    MX_UART4_Init(bps);
+    MX_USART6_UART_Init();
+
+    GPIO_InitStruct.Pin = GPIO_PIN_15;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+
+    HAL_UART_Receive_IT(&huart4, (uint8_t *)&uPort.ucRxData, 1);
+
+    printf("uart init success");
+}
+
+void UART_SendData(uint8_t *pData, uint8_t ucDataLen)
+{
+    led3_on();
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+    for(unsigned int i = 0; i < 6000; i++)
+    {
+        __nop();
+        __nop();
+        __nop();
+        __nop();
+        __nop();
+        __nop();
+        __nop();
+        __nop();
+    }
+    HAL_UART_Transmit(&huart4, pData, ucDataLen, 0xff);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+    led3_off();
+}
+
+uint8_t BCD_HEX(uint8_t dat)
+{
+    uint8_t a, b, c;
+    a = dat / 10;
+    b = dat % 10;
+    c = ((a << 4) & 0xf0) | (b & 0x0f);
+    return (c);
+}
+uint8_t HEX_BCD(uint8_t dat)
+{
+    uint8_t a, b;
+    a = (dat >> 4) * 10;
+    b = a + (dat & 0x0f);
+    return (b);
+}
+void vUART_TASK(void *pvParameters)
+{
+    Uart_Msg_TypeDef xRxMsgBuf = {0};
+//    Uart_Msg_TypeDef *pxRxMsg;
+    EEprom_Msg_TypeDef xEEpromWriteData;
+    RTC_TimeTypeDef sTime = {0};
+    RTC_DateTypeDef sDate = {0};
+
+//rs485 enable signal ,PA15
+    uint8_t ucCmd, i;
+    uint8_t ucxTxMsgBuf[32];
+
+    DEVICEDATA *pd;
+    pd = (DEVICEDATA *) pvParameters;
+    uint8_t data_temp;
+
+    xFromUpStreamMsg = osMessageQueueNew(8, sizeof(Uart_Msg_TypeDef), NULL);
+    if(xFromUpStreamMsg == 0)
+    {
+        //there is not enough FreeRTOS heap for the task
+        printf("uart task have no enough heap");
+    }
+    else
+    {
+        UART_Init((pd->uiBaudrate));
+    }
+    while(1)
+    {
+        //external watch dog
+        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
+        ucAddress = pd->ucAddress;
+//        HAL_UART_ErrorCallback(&huart4);
+        if(osMessageQueueGet (xFromUpStreamMsg, &xRxMsgBuf, NULL, 0xff) == osOK)
+        {
+//            pxRxMsg = &xRxMsgBuf;
+            uPort.ucRxData = 0x00;
+            for(i = 0; i < 16; i++)
+            {
+                uPort.ucMsgBuf[i] = 0x00;
+            }
+            ucCmd = xRxMsgBuf.ucMsgBuf[3];
+            switch (ucCmd)
+            {
+#if DUAL_DEFENCE == 1//双防区				
+            case 0x10://巡检命令
+
+                ucxTxMsgBuf[0] =  0xA3;
+                ucxTxMsgBuf[1] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[2] =  ucAddress;
+                ucxTxMsgBuf[3] =  ucCmd;
+                ucxTxMsgBuf[4] =  17;
+                ucxTxMsgBuf[5] =  0x01;
+                ucxTxMsgBuf[6] =  0x02;
+                ucxTxMsgBuf[7] =  pd->ucVoltage[0];
+                ucxTxMsgBuf[8] =  pd->ucVoltage[1];
+                if(pd->ucRunningStatus & 0x01)
+                {
+                    data_temp = pd->ucAlarmType & 0x0f;
+                    if(data_temp == 0x00)
+                        ucxTxMsgBuf[ 9 ] = 0x10;
+                    else if(data_temp == 0x01)    //open
+                        ucxTxMsgBuf[9] = 0x12;
+                    else if(data_temp == 0x02)   //short
+                        ucxTxMsgBuf[9] = 0x11;
+                    else
+                        ucxTxMsgBuf[9] = 0x13;
+                }
+                else
+                    ucxTxMsgBuf[ 9 ] = 0x00;
+
+                if(pd->ucRunningStatus & 0x02)
+                {
+                    data_temp = (pd->ucAlarmType & 0xf0);
+                    if(data_temp == 0x00)
+                        ucxTxMsgBuf[ 10 ] = 0x10;
+                    else if(data_temp == 0x10)
+                        ucxTxMsgBuf[10] = 0x12;
+                    else if(data_temp == 0x20)
+                        ucxTxMsgBuf[10] = 0x11;
+                    else
+                        ucxTxMsgBuf[10] = 0x13;
+                }
+                else
+                    ucxTxMsgBuf[ 10 ] = 0x00;
+
+                ucxTxMsgBuf[11] = pd->ucPowerStatus;
+                //ucxTxMsgBuf[ 12 ] = pd->ucAlarmStatus&0x01;    //tamper
+
+                if(pd->ucAlarmStatus == 0x00)
+                {
+                    ucxTxMsgBuf[ 12 ] = 0xF0;
+                }
+                else if (pd->ucAlarmStatus == 0x01)
+                {
+                    ucxTxMsgBuf[ 12 ] = 0xFF;
+                }
+
+                if(pd->ucIREn == 0xAA)
+                    ucxTxMsgBuf[ 13 ] = 1;
+                else
+                    ucxTxMsgBuf[ 13 ] = 0;
+
+                if(pd->ucAlarmStatus & 0x02)
+                    ucxTxMsgBuf[ 14 ] = 0xAA;
+                else
+                    ucxTxMsgBuf[ 14 ] = 0x00;
+                ucxTxMsgBuf[ 15 ] = 0x00;
+                ucxTxMsgBuf[ 16 ] = crc16( ucxTxMsgBuf, 16);
+                UART_SendData(ucxTxMsgBuf, 17);
+                xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x01://注册命令
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  25;
+                ucxTxMsgBuf[ 5 ] =  0x01;
+                ucxTxMsgBuf[ 6 ] =  0xF1;
+                ucxTxMsgBuf[ 7 ] =  0x02;
+
+                ucxTxMsgBuf[ 8 ] =  0x01;    //firmware version1.00 2021.0531
+                ucxTxMsgBuf[ 9 ] =  0x00;
+                ucxTxMsgBuf[ 10 ] =  0x00;
+                ucxTxMsgBuf[ 11 ] =  0x00;
+                ucxTxMsgBuf[ 12 ] =  20;
+                ucxTxMsgBuf[ 13 ] =  22;
+                ucxTxMsgBuf[ 14 ] =  8;
+                ucxTxMsgBuf[ 15 ] =  9;
+
+                ucxTxMsgBuf[ 16 ] =  0x02; //hardware version 2.000
+                ucxTxMsgBuf[ 17 ] =  0x00;
+                ucxTxMsgBuf[ 18 ] =  0x00;
+                ucxTxMsgBuf[ 19 ] =  0x00;
+                ucxTxMsgBuf[ 20 ] =  0x00;
+                ucxTxMsgBuf[ 21 ] =  0x01;
+                ucxTxMsgBuf[ 22 ] =  0x01;
+
+                if(pd->ucIREn == 0xAA)
+                    ucxTxMsgBuf[ 23 ] = 1;
+                else
+                    ucxTxMsgBuf[ 23 ] = 0;
+                ucxTxMsgBuf[ 24 ] =  crc16( ucxTxMsgBuf, 24);
+                UART_SendData(ucxTxMsgBuf, 25);
+                xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x02://删除命令
+                ucxTxMsgBuf[0] =  0xA3;
+                ucxTxMsgBuf[1] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[2] =  ucAddress;
+                ucxTxMsgBuf[3] =  ucCmd;
+                ucxTxMsgBuf[4] =  7;
+                ucxTxMsgBuf[5] =  0x03;
+                ucxTxMsgBuf[6] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+                xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x03://撤布防命令
+                if(pd->ucIREn == 0xAA)
+                {
+                    if ((xRxMsgBuf.ucMsgBuf[ 5 ] == 0x01) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x02) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x03))
+                    {
+                        if ( (pd->ucRunningStatus & 0x01) == 0 )
+                            pd->ucPulseOn |= 0x01;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x00)
+                    {
+                        if ( pd->ucRunningStatus & 0x01 )
+                            pd->ucPulseOn &= 0xFE;
+                    }
+                    if ((xRxMsgBuf.ucMsgBuf[ 6 ] == 0x01) || (xRxMsgBuf.ucMsgBuf[ 6 ] == 0x02) || (xRxMsgBuf.ucMsgBuf[ 6 ] == 0x03))
+                    {
+                        if (  (pd->ucRunningStatus & 0x02) == 0 )
+                            pd->ucPulseOn |= 0x02;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 6 ] == 0x00)
+                    {
+                        if ( pd->ucRunningStatus & 0x02 )
+                            pd->ucPulseOn &= 0xFD;
+                    }
+                    if ((xRxMsgBuf.ucMsgBuf[7] == 0x01) || (xRxMsgBuf.ucMsgBuf[7] == 0x02) || (xRxMsgBuf.ucMsgBuf[7] == 0x03))
+                    {
+                        pd->ucIREn = 0xAA;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 7 ] == 0x00)
+                    {
+                        pd->ucIREn = 0x55;
+                    }
+                    ucxTxMsgBuf[ 0 ] =  0xA3;
+                    ucxTxMsgBuf[ 1 ]  = xRxMsgBuf.ucMsgBuf[2];
+                    ucxTxMsgBuf[ 2 ] =  ucAddress;
+                    ucxTxMsgBuf[ 3 ] =  ucCmd;
+                    ucxTxMsgBuf[ 4 ] =  10;
+                    ucxTxMsgBuf[ 5 ] =  0x01;
+                    ucxTxMsgBuf[ 6 ] =  xRxMsgBuf.ucMsgBuf[ 5 ];
+                    ucxTxMsgBuf[ 7 ] =  xRxMsgBuf.ucMsgBuf[ 6 ];
+                    ucxTxMsgBuf[ 8 ] =  xRxMsgBuf.ucMsgBuf[ 7 ];
+
+                    ucxTxMsgBuf[ 9 ] =  crc16( ucxTxMsgBuf, 9);
+                    UART_SendData(ucxTxMsgBuf, 10);
+										xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                }
+                else
+                {
+                    if ((xRxMsgBuf.ucMsgBuf[ 5 ] == 0x01) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x02) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x03))
+                    {
+                        if ( (pd->ucRunningStatus & 0x01) == 0 )
+                            pd->ucPulseOn |= 0x01;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x00)
+                    {
+                        if ( pd->ucRunningStatus & 0x01 )
+                            pd->ucPulseOn &= 0xFE;
+                    }
+
+                    if ((xRxMsgBuf.ucMsgBuf[ 6 ] == 0x01) || (xRxMsgBuf.ucMsgBuf[ 6 ] == 0x02) || (xRxMsgBuf.ucMsgBuf[ 6 ] == 0x03))
+                    {
+                        if (  (pd->ucRunningStatus & 0x02) == 0 )
+                            pd->ucPulseOn |= 0x02;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 6 ] == 0x00)
+                    {
+                        if ( pd->ucRunningStatus & 0x02 )
+                            pd->ucPulseOn &= 0xFD;
+                    }
+                    ucxTxMsgBuf[ 0 ] =  0xA3;
+                    ucxTxMsgBuf[ 1 ]  =  xRxMsgBuf.ucMsgBuf[2];
+                    ucxTxMsgBuf[ 2 ] =  ucAddress;
+                    ucxTxMsgBuf[ 3 ] =  ucCmd;
+                    ucxTxMsgBuf[ 4 ] =  9;
+                    ucxTxMsgBuf[ 5 ] =  0x01;
+                    ucxTxMsgBuf[ 6 ] =  xRxMsgBuf.ucMsgBuf[ 5 ];
+                    ucxTxMsgBuf[ 7 ] =  xRxMsgBuf.ucMsgBuf[ 6 ];
+                    ucxTxMsgBuf[ 8 ] =  crc16( ucxTxMsgBuf, 8);
+                    UART_SendData(ucxTxMsgBuf, 9);
+										xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                }
+                break;
+
+            case 0x20://参数设置命令
+                if ((xRxMsgBuf.ucMsgBuf[5] > 0x01) && (xRxMsgBuf.ucMsgBuf[5] < 0x33))//蜂鸣器时间设置
+                {
+                    xEEpromWriteData.ucData[0] = xRxMsgBuf.ucMsgBuf[5];
+                    pd->ucBeepOnTime = (unsigned int )xRxMsgBuf.ucMsgBuf[5] * 900;//550
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[0] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[6] > 0x08) && (xRxMsgBuf.ucMsgBuf[6] < 0x42))//输出电压设置
+                {
+                    pd->ucSetVoltage[0]  = pd->ucSetVoltage[1] =  xRxMsgBuf.ucMsgBuf[6];
+                    xEEpromWriteData.ucData[1] = xRxMsgBuf.ucMsgBuf[6];
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[1] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[7] >= 0x01) && ( xRxMsgBuf.ucMsgBuf[7] < 0x04))//输出脉冲个数设置
+                {
+                    pd->ucAlarmCycle = xRxMsgBuf.ucMsgBuf[ 7 ] ;
+                    xEEpromWriteData.ucData[2] = xRxMsgBuf.ucMsgBuf[7];
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[2] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[8] == 0x00) || (xRxMsgBuf.ucMsgBuf[8] == 0x01) )//集成开关量使能设置
+                {
+                    xEEpromWriteData.ucData[3] = (0x55 << xRxMsgBuf.ucMsgBuf[8]);
+                    pd->ucIREn = (0x55 << xRxMsgBuf.ucMsgBuf[8]);
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[3] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[9] > 0x01) && (xRxMsgBuf.ucMsgBuf[9] < 0x33))//继电器输出保持时间设置
+                {
+                    xEEpromWriteData.ucData[4] = xRxMsgBuf.ucMsgBuf[9];
+                    pd->ucRelayOnTime = (unsigned int )xRxMsgBuf.ucMsgBuf[9] * 900;//550
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[4] = 0x00;
+                }
+                xEEpromWriteData.ucCmd = 0x06;
+                osMessageQueuePut(xEEWriteMsg, &xEEpromWriteData, 0, 0xFF);
+
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  7;
+                ucxTxMsgBuf[ 5 ] =  0x01;
+                ucxTxMsgBuf[ 6 ] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x21:
+                if ((xRxMsgBuf.ucMsgBuf[5] > 0x00) && (xRxMsgBuf.ucMsgBuf[5] < 0x04))
+                {
+                    pd->ucAlarmCycle = xRxMsgBuf.ucMsgBuf[5] ;
+                    pd->ucForceSync = 1;
+                    xEEpromWriteData.ucData[2] = xRxMsgBuf.ucMsgBuf[5];    //to be comfirm what action
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[2] = 0x00;
+                }
+                xEEpromWriteData.ucCmd = 0x06;
+                xEEpromWriteData.ucData[0] = 0x00;
+                xEEpromWriteData.ucData[1] = 0x00;
+                xEEpromWriteData.ucData[3] = 0x00;
+                xEEpromWriteData.ucData[4] = 0x00;
+                osMessageQueuePut(xEEWriteMsg, &xEEpromWriteData, 0, 0xFF);
+
+                ucxTxMsgBuf[0] =  0xA3;
+                ucxTxMsgBuf[1] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[2] =  ucAddress;
+                ucxTxMsgBuf[3] =  ucCmd;
+                ucxTxMsgBuf[4] =  0x07;
+                ucxTxMsgBuf[5] =  0x01;
+                ucxTxMsgBuf[6] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+
+            case 0x22:
+//              if (xRxMsgBuf.ucMsgBuf[5]==0x01)
+//              {
+//                ucxTxMsgBuf[5] = xRxMsgBuf.ucMsgBuf[5];
+//            //    pd->ucBeepOnTime = (unsigned int )xRxMsgBuf.ucMsgBuf[5] * 550;
+//              }
+//              else
+//              {
+//                  ucxTxMsgBuf[5] = 0x00;
+//              }
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  7;
+                ucxTxMsgBuf[ 5 ] =  0x03;
+                ucxTxMsgBuf[ 6 ] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+						xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case  0xda:
+                // write_ds1302(0x8e, 0x00  );   //
+                sDate.Year = xRxMsgBuf.ucMsgBuf[4];
+                sDate.Month = xRxMsgBuf.ucMsgBuf[5];
+                sDate.Date = xRxMsgBuf.ucMsgBuf[6];
+                sTime.Hours = xRxMsgBuf.ucMsgBuf[7];
+                sTime.Minutes = xRxMsgBuf.ucMsgBuf[8];
+                sTime.Seconds = xRxMsgBuf.ucMsgBuf[9];
+                HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+                HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+                // write_ds1302(0x8e, 0x80  );   //
+
+                ucxTxMsgBuf[0] =  0x06;
+                ucxTxMsgBuf[1] = sDate.Year;    //HEX_BCD( ucxTxMsgBuf[1] );
+                ucxTxMsgBuf[2] = sDate.Month;   //HEX_BCD( ucxTxMsgBuf[2] );
+                ucxTxMsgBuf[3] = sDate.Date;    //HEX_BCD( ucxTxMsgBuf[3] );
+                ucxTxMsgBuf[4] = sTime.Hours;   //HEX_BCD( ucxTxMsgBuf[4] );
+                ucxTxMsgBuf[5] = sTime.Minutes;  //HEX_BCD( ucxTxMsgBuf[5] );
+                ucxTxMsgBuf[6] = sTime.Seconds;  //HEX_BCD( ucxTxMsgBuf[6] );
+                UART_SendData(ucxTxMsgBuf, 7);
+						xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case  0xdb:
+                HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+                HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+                ucxTxMsgBuf[0] =  0x06;
+                ucxTxMsgBuf[1] = sDate.Year;
+                ucxTxMsgBuf[2] = sDate.Month;
+                ucxTxMsgBuf[3] = sDate.Date;
+                ucxTxMsgBuf[4] = sTime.Hours;
+                ucxTxMsgBuf[5] = sTime.Minutes;
+                ucxTxMsgBuf[6] = sTime.Seconds;
+                UART_SendData(ucxTxMsgBuf, 7);
+						xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+            default:
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  7;
+                ucxTxMsgBuf[ 5 ] =  0x03;
+                ucxTxMsgBuf[ 6 ] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+						xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+#elif DUAL_DEFENCE == 0 //单防区
+
+            case 0x01://注册命令
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  25;
+                ucxTxMsgBuf[ 5 ] =  0x01;
+                ucxTxMsgBuf[ 6 ] =  0xF1;
+                ucxTxMsgBuf[ 7 ] =  0x01;
+
+                ucxTxMsgBuf[ 8 ] =  0x01;   //firmware version1.00 2021.0531 DB3-DB10: 软件版本 格式为V1. 0.50-2012.04.21 18 个 发送为1 0 5 0 20 12 04 21 共8 个字节
+                ucxTxMsgBuf[ 9 ] =  0x00;
+                ucxTxMsgBuf[ 10 ] =  0x00;
+                ucxTxMsgBuf[ 11 ] =  0x00;
+                ucxTxMsgBuf[ 12 ] =  20;
+                ucxTxMsgBuf[ 13 ] =  22;
+                ucxTxMsgBuf[ 14 ] =  8;
+                ucxTxMsgBuf[ 15 ] =  9;
+
+                ucxTxMsgBuf[ 16 ] =  0x02; //hardware version 2.000  DB11-DB17: 硬件版本 格式为DS-19302REV1.1 14 个 发送为1 9 3 0 2 1 1共7 个字节
+                ucxTxMsgBuf[ 17 ] =  0x00;
+                ucxTxMsgBuf[ 18 ] =  0x00;
+                ucxTxMsgBuf[ 19 ] =  0x00;
+                ucxTxMsgBuf[ 20 ] =  0x00;
+                ucxTxMsgBuf[ 21 ] =  0x01;
+                ucxTxMsgBuf[ 22 ] =  0x01;
+
+                if(pd->ucIREn == 0xAA)
+                    ucxTxMsgBuf[ 23 ] = 1;
+                else
+                    ucxTxMsgBuf[ 23 ] = 0;
+                ucxTxMsgBuf[ 24 ] =  crc16( ucxTxMsgBuf, 24);
+                UART_SendData(ucxTxMsgBuf, 25);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x02://删除命令
+                ucxTxMsgBuf[0] =  0xA3;
+                ucxTxMsgBuf[1] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[2] =  ucAddress;
+                ucxTxMsgBuf[3] =  ucCmd;
+                ucxTxMsgBuf[4] =  7;
+                ucxTxMsgBuf[5] =  0x03;
+                ucxTxMsgBuf[6] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x03://撤布防命令
+                if(pd->ucIREn == 0xAA)
+                {
+                    if ((xRxMsgBuf.ucMsgBuf[ 5 ] == 0x01) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x02) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x03))
+                    {
+                        if ( (pd->ucRunningStatus & 0x01) == 0 )
+                            pd->ucPulseOn |= 0x01;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x00)
+                    {
+                        if ( pd->ucRunningStatus & 0x01 )
+                            pd->ucPulseOn &= 0xFE;
+                    }
+
+                    if ((xRxMsgBuf.ucMsgBuf[6] == 0x01) || (xRxMsgBuf.ucMsgBuf[6] == 0x02) || (xRxMsgBuf.ucMsgBuf[6] == 0x03))
+                    {
+                        pd->ucIREn = 0xAA;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 6 ] == 0x00)
+                    {
+                        pd->ucIREn = 0x55;
+                    }
+                    ucxTxMsgBuf[ 0 ] =  0xA3;
+                    ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                    ucxTxMsgBuf[ 2 ] =  ucAddress;
+                    ucxTxMsgBuf[ 3 ] =  ucCmd;
+                    ucxTxMsgBuf[ 4 ] =  9;
+                    ucxTxMsgBuf[ 5 ] =  0x01;
+                    ucxTxMsgBuf[ 6 ] =  xRxMsgBuf.ucMsgBuf[ 5 ];//ucxTxMsgBuf[ 5 ]
+                    ucxTxMsgBuf[ 7 ] =  xRxMsgBuf.ucMsgBuf[ 6 ];
+                    ucxTxMsgBuf[ 8 ] =  crc16( ucxTxMsgBuf, 8);
+                    UART_SendData(ucxTxMsgBuf, 9);
+										xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                }
+                else
+                {
+                    if ((xRxMsgBuf.ucMsgBuf[ 5 ] == 0x01) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x02) || (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x03))
+                    {
+                        if ( (pd->ucRunningStatus & 0x01) == 0 )
+                            pd->ucPulseOn |= 0x01;
+                    }
+                    else if (xRxMsgBuf.ucMsgBuf[ 5 ] == 0x00)
+                    {
+                        if ( pd->ucRunningStatus & 0x01 )
+                            pd->ucPulseOn &= 0xFE;
+                    }
+                    ucxTxMsgBuf[ 0 ] =  0xA3;
+                    ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                    ucxTxMsgBuf[ 2 ] =  ucAddress;
+                    ucxTxMsgBuf[ 3 ] =  ucCmd;
+                    ucxTxMsgBuf[ 4 ] =  8;
+                    ucxTxMsgBuf[ 5 ] =  0x01;
+                    ucxTxMsgBuf[ 6 ] =  xRxMsgBuf.ucMsgBuf[ 5 ];
+                    ucxTxMsgBuf[ 7 ] =  crc16( ucxTxMsgBuf, 7);
+                    UART_SendData(ucxTxMsgBuf, 8);
+										xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                }
+                break;
+
+            case 0x10://巡检命令
+                ucxTxMsgBuf[0] =  0xA3;
+                ucxTxMsgBuf[1] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[2] =  ucAddress;
+                ucxTxMsgBuf[3] =  ucCmd;
+                ucxTxMsgBuf[4] =  15;
+                ucxTxMsgBuf[5] =  0x01;
+                ucxTxMsgBuf[6] =  0x01;
+                ucxTxMsgBuf[7] =  pd->ucVoltage[0];
+
+                if(pd->ucRunningStatus & 0x01)
+                {
+                    data_temp = pd->ucAlarmType & 0x0f;
+                    if(data_temp == 0x00)
+                        ucxTxMsgBuf[ 8 ] = 0x10;
+                    else if(data_temp == 0x01)    //open
+                        ucxTxMsgBuf[8] = 0x12;
+                    else if(data_temp == 0x02)   //short
+                        ucxTxMsgBuf[8] = 0x11;
+                    else
+                        ucxTxMsgBuf[8] = 0x13;
+                }
+                else
+                    ucxTxMsgBuf[ 8 ] = 0x00;
+
+//                if(pd->ucRunningStatus & 0x02)
+//                {
+//                    data_temp = (pd->ucAlarmType & 0xf0);
+//                    if(data_temp == 0x00)
+//                        ucxTxMsgBuf[ 10 ] = 0x10;
+//                    else if(data_temp == 0x10)
+//                        ucxTxMsgBuf[10] = 0x12;
+//                    else if(data_temp == 0x20)
+//                        ucxTxMsgBuf[10] = 0x11;
+//                    else
+//                        ucxTxMsgBuf[10] = 0x13;
+//                }
+//                else
+//                    ucxTxMsgBuf[ 10 ] = 0x00;
+
+                ucxTxMsgBuf[9] = pd->ucPowerStatus;
+                //ucxTxMsgBuf[ 12 ] = pd->ucAlarmStatus&0x01;    //tamper
+
+                if(pd->ucAlarmStatus == 0x00)
+                {
+                    ucxTxMsgBuf[ 10 ] = 0xF0;
+                }
+                else if (pd->ucAlarmStatus == 0x01)
+                {
+                    ucxTxMsgBuf[ 10 ] = 0xFF;
+                }
+
+                if(pd->ucIREn == 0xAA)
+                    ucxTxMsgBuf[ 11 ] = 1;
+                else
+                    ucxTxMsgBuf[ 11 ] = 0;
+
+                if(pd->ucAlarmStatus & 0x02)
+                    ucxTxMsgBuf[ 12 ] = 0xAA;
+                else
+                    ucxTxMsgBuf[ 12 ] = 0x00;
+                ucxTxMsgBuf[ 13 ] = 0x00;
+                ucxTxMsgBuf[ 14 ] = crc16( ucxTxMsgBuf, 14);
+                UART_SendData(ucxTxMsgBuf, 15);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x20://参数设置命令
+                if ((xRxMsgBuf.ucMsgBuf[5] > 0x01) && (xRxMsgBuf.ucMsgBuf[5] < 0x33))//蜂鸣器时间设置
+                {
+                    xEEpromWriteData.ucData[0] = xRxMsgBuf.ucMsgBuf[5];
+                    pd->ucBeepOnTime = (unsigned int )xRxMsgBuf.ucMsgBuf[5] * 1000;//550
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[0] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[6] > 0x08) && (xRxMsgBuf.ucMsgBuf[6] < 0x42))//输出电压设置
+                {
+                    pd->ucSetVoltage[0]   =  xRxMsgBuf.ucMsgBuf[6];//= pd->ucSetVoltage[1]
+                    xEEpromWriteData.ucData[1] = xRxMsgBuf.ucMsgBuf[6];
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[1] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[7] >= 0x01) && ( xRxMsgBuf.ucMsgBuf[7] < 0x04))//输出脉冲个数设置
+                {
+                    pd->ucAlarmCycle = xRxMsgBuf.ucMsgBuf[ 7 ] ;
+                    xEEpromWriteData.ucData[2] = xRxMsgBuf.ucMsgBuf[7];
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[2] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[8] == 0x00) || (xRxMsgBuf.ucMsgBuf[8] == 0x01) )//集成开关量使能设置
+                {
+                    xEEpromWriteData.ucData[3] = (0x55 << xRxMsgBuf.ucMsgBuf[8]);
+                    pd->ucIREn = (0x55 << xRxMsgBuf.ucMsgBuf[8]);
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[3] = 0x00;
+                }
+                if ((xRxMsgBuf.ucMsgBuf[9] > 0x01) && (xRxMsgBuf.ucMsgBuf[9] < 0x33))//继电器输出保持时间设置
+                {
+                    xEEpromWriteData.ucData[4] = xRxMsgBuf.ucMsgBuf[9];
+                    pd->ucRelayOnTime = (unsigned int )xRxMsgBuf.ucMsgBuf[9] * 1000;//550
+                    pd->ucForceSync = 1;
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[4] = 0x00;
+                }
+                xEEpromWriteData.ucCmd = 0x06;
+                osMessageQueuePut(xEEWriteMsg, &xEEpromWriteData, 0, 0xFF);
+
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  7;
+                ucxTxMsgBuf[ 5 ] =  0x01;
+                ucxTxMsgBuf[ 6 ] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case 0x21:
+                if ((xRxMsgBuf.ucMsgBuf[5] >= 0x01) && (xRxMsgBuf.ucMsgBuf[5] < 0x04))
+                {
+                    pd->ucAlarmCycle = xRxMsgBuf.ucMsgBuf[5] ;
+                    pd->ucForceSync = 1;
+                    xEEpromWriteData.ucData[2] = xRxMsgBuf.ucMsgBuf[5];    //to be comfirm what action
+                }
+                else
+                {
+                    xEEpromWriteData.ucData[2] = 0x00;
+                }
+                xEEpromWriteData.ucCmd = 0x06;
+                xEEpromWriteData.ucData[0] = 0x00;
+                xEEpromWriteData.ucData[1] = 0x00;
+                xEEpromWriteData.ucData[3] = 0x00;
+                xEEpromWriteData.ucData[4] = 0x00;
+                osMessageQueuePut(xEEWriteMsg, &xEEpromWriteData, 0, 0xFF);
+
+                ucxTxMsgBuf[0] =  0xA3;
+                ucxTxMsgBuf[1] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[2] =  ucAddress;
+                ucxTxMsgBuf[3] =  ucCmd;
+                ucxTxMsgBuf[4] =  0x07;
+                ucxTxMsgBuf[5] =  0x01;
+                ucxTxMsgBuf[6] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+
+            case 0x22:
+//              if (xRxMsgBuf.ucMsgBuf[5]==0x01)
+//              {
+//                ucxTxMsgBuf[5] = xRxMsgBuf.ucMsgBuf[5];
+//            //    pd->ucBeepOnTime = (unsigned int )xRxMsgBuf.ucMsgBuf[5] * 550;
+//              }
+//              else
+//              {
+//                  ucxTxMsgBuf[5] = 0x00;
+//              }
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  7;
+                ucxTxMsgBuf[ 5 ] =  0x03;
+                ucxTxMsgBuf[ 6 ] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case  0xda:
+                // write_ds1302(0x8e, 0x00  );   //
+                sDate.Year = xRxMsgBuf.ucMsgBuf[4];
+                sDate.Month = xRxMsgBuf.ucMsgBuf[5];
+                sDate.Date = xRxMsgBuf.ucMsgBuf[6];
+                sTime.Hours = xRxMsgBuf.ucMsgBuf[7];
+                sTime.Minutes = xRxMsgBuf.ucMsgBuf[8];
+                sTime.Seconds = xRxMsgBuf.ucMsgBuf[9];
+                HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+                HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+                // write_ds1302(0x8e, 0x80  );   //
+
+                ucxTxMsgBuf[0] =  0x06;
+                ucxTxMsgBuf[1] = sDate.Year;    //HEX_BCD( ucxTxMsgBuf[1] );
+                ucxTxMsgBuf[2] = sDate.Month;   //HEX_BCD( ucxTxMsgBuf[2] );
+                ucxTxMsgBuf[3] = sDate.Date;    //HEX_BCD( ucxTxMsgBuf[3] );
+                ucxTxMsgBuf[4] = sTime.Hours;   //HEX_BCD( ucxTxMsgBuf[4] );
+                ucxTxMsgBuf[5] = sTime.Minutes;  //HEX_BCD( ucxTxMsgBuf[5] );
+                ucxTxMsgBuf[6] = sTime.Seconds;  //HEX_BCD( ucxTxMsgBuf[6] );
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+
+            case  0xdb:
+                HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+                HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+                ucxTxMsgBuf[0] =  0x06;
+                ucxTxMsgBuf[1] = sDate.Year;
+                ucxTxMsgBuf[2] = sDate.Month;
+                ucxTxMsgBuf[3] = sDate.Date;
+                ucxTxMsgBuf[4] = sTime.Hours;
+                ucxTxMsgBuf[5] = sTime.Minutes;
+                ucxTxMsgBuf[6] = sTime.Seconds;
+                UART_SendData(ucxTxMsgBuf, 7);
+                break;
+            default:
+                ucxTxMsgBuf[ 0 ] =  0xA3;
+                ucxTxMsgBuf[ 1 ] =  xRxMsgBuf.ucMsgBuf[2];
+                ucxTxMsgBuf[ 2 ] =  ucAddress;
+                ucxTxMsgBuf[ 3 ] =  ucCmd;
+                ucxTxMsgBuf[ 4 ] =  7;
+                ucxTxMsgBuf[ 5 ] =  0x03;
+                ucxTxMsgBuf[ 6 ] =  crc16( ucxTxMsgBuf, 6);
+                UART_SendData(ucxTxMsgBuf, 7);
+								xRxMsgBuf.ucRxData = 0x00;
+                for(i = 0; i < 16; i++)
+                {
+                    xRxMsgBuf.ucMsgBuf[i] = 0x00;
+                }
+                break;
+#endif
+            }
+        }
+    }
+}
+/* USER CODE END 1 */
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
