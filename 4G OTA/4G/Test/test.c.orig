@@ -1,0 +1,556 @@
+#include "test.h"
+#include "bsp_esp8266.h"
+#include "bsp_SysTick.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include "main.h"
+#include "malloc.h"
+#include <ctype.h>
+#include "bsp_SysTick.h"
+#include <stdio.h>
+//#include <iostream>
+//#include <string>
+#include <time.h>
+#include <test.h>
+//using namespace std;
+#define  frequency 50
+list_npaixu list_paixunum[40];
+list_jibenxinxi list_jibenxinxip[40];
+//list_npaixu list_paixu[40];
+volatile uint8_t ucTcpClosedFlag = 0;
+uint8_t Swich=0;
+//char cStr [ 1500 ] = { 0 };
+
+void ESP8266_relink()
+{
+    uint8_t ucStatus;
+    if ( ucTcpClosedFlag )                                             //检测是否失去连接
+    {
+        ESP8266_ExitUnvarnishSend ();                                    //退出透传模式
+
+        do ucStatus = ESP8266_Get_LinkStatus ();                         //获取连接状态
+        while ( ! ucStatus );
+
+        if ( ucStatus == 4 )                                             //确认失去连接后重连
+        {
+            printf ( "\r\n正在重连热点和服务器 ......\r\n" );
+
+            while ( ! ESP8266_JoinAP ( macUser_ESP8266_ApSsid, macUser_ESP8266_ApPwd ) );
+
+            while ( !	ESP8266_Link_Server ( enumTCP, macUser_ESP8266_TcpServer_IP, macUser_ESP8266_TcpServer_Port, Single_ID_0 ) );
+
+            printf ( "\r\n重连热点和服务器成功\r\n" );
+
+        }
+
+        while ( ! ESP8266_UnvarnishSend () );
+
+    }
+
+}
+void denglu_TCP(char *shebei_id,uint32_t	messageid,uint32_t	timestamp)
+{
+    char buff[350];
+//	char shebei_id[20]="MT419B5032";
+//	="{ \"messageid\": 12133422,\"timestamp\": 1564288331,\"deviceid\": \"MT419B5032\",\"cmd\": \"CMD-202\", \"desired\": {\"type\":\"Login\",\"method\":\"wifi\"}}";
+    sprintf(buff,"{ \"messageid\": %d,\"timestamp\": %d,\"deviceid\": \"%s\",\"cmd\": \"CMD-202\", \"desired\": {\"type\":\"Login\",\"method\":\"wifi\"}}",messageid,timestamp,shebei_id);
+    printf("%s\r\n",buff);
+    ESP8266_SendString ( ENABLE, buff, 0, Single_ID_0 );               //发送数据
+
+}
+void UP_hearbeat(char *shebei_id,uint32_t	messageid,uint32_t	timestamp)
+{
+    char buff[350];
+//	char shebei_id[20]="MT419B5032";
+//	="{ \"messageid\": 12133422,\"timestamp\": 1564288331,\"deviceid\": \"MT419B5032\",\"cmd\": \"CMD-202\", \"desired\": {\"type\":\"Login\",\"method\":\"wifi\"}}";
+    sprintf(buff,"{ \"messageid\": %d,\"timestamp\": %d,\"deviceid\": \"%s\",\"cmd\": \"CMD-301\", \"desired\": {\"type\":\"Heartbeat\"}}",messageid,timestamp,shebei_id);
+    printf("%s\r\n",buff);
+    ESP8266_SendString ( ENABLE, buff, 0, Single_ID_0 );               //发送数据
+
+}
+void UP_SZ_data(char *shebei_id,uint32_t	messageid,uint32_t	timestamp,uint8_t paixunum)
+{
+    char buff[350];
+//	char shebei_id[20]="MT419B5032";
+//	="{ \"messageid\": 12133422,\"timestamp\": 1564288331,\"deviceid\": \"MT419B5032\",\"cmd\": \"CMD-202\", \"desired\": {\"type\":\"Login\",\"method\":\"wifi\"}}";
+    sprintf(buff,"{ \"messageid\": %d,\"timestamp\": %d,\"deviceid\": \"%s\",\"cmd\": \"CMD-104\", \"desired\": {\"arrays\": [{\"device\": { \"id\": %d},\"getparam\":{ \"loadmax\":%d , \"elecmax\": %d, \"tempmax\": %d, \"currmax\": %d, \"voltmax\": %d, \"voltmin\": %d, \"voltime\": %d, \"volrest\": %d,\"leakage\": %d}}]}}"
+            ,messageid,timestamp,shebei_id,list_jibenxinxip[paixunum-1].id,workSZdata[paixunum-1].limit_power_p,workSZdata[paixunum-1].limit_total_enery_p,workSZdata[paixunum-1].limit_ntc_temperature,workSZdata[paixunum-1].limit_attdata_amp,workSZdata[paixunum-1].limit_high_attdata_volt,workSZdata[paixunum-1].limit_Low_attdata_volt,workSZdata[paixunum-1].volt_action_time,workSZdata[paixunum-1].volt_recovery_time,workSZdata[paixunum-1].Leakage_detection);
+    printf("\r\n上传%s\r\n",buff);
+    ESP8266_SendString ( ENABLE, buff, 0, Single_ID_0 );               //发送数据
+
+}
+void up_kaiguanstate2(char *shebei_id,uint32_t	messageid,uint32_t	timestamp,uint8_t pake,uint8_t paixu_0,uint8_t paixunum)
+{
+    char dbuf1[250];
+    uint32_t k=0;
+//	char *dbuf=mymalloc(4400);
+    char dbuf[4400];
+    uint8_t i=0;
+    sprintf(dbuf1,"{\"messageid\": %d,\"timestamp\": %d,\"deviceid\": \"%s\",\"cmd\": \"CMD-106\",\"desired\": {\"sub\":%d,\"arrays\": [",messageid,timestamp,shebei_id,pake);
+    sprintf(dbuf+k,"%s",dbuf1);
+    k+=strlen(dbuf1);
+    for(i=paixu_0; i<paixunum; i++)
+    {
+        memset(dbuf1,0,250);
+        if(i==paixunum-1)
+        {
+            sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"switch\": %d,\"istimer\":1}",list_jibenxinxip[i].id,list_jibenxinxip[i].switchin);
+        } else
+        {
+            sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"switch\": %d,\"istimer\":1},",list_jibenxinxip[i].id,list_jibenxinxip[i].switchin);
+        }
+        sprintf(dbuf+(i*strlen(dbuf1)),"%s",dbuf1);
+        sprintf(dbuf+k,"%s",dbuf1);
+        k+=strlen(dbuf1);
+    }
+    sprintf(dbuf+k,"]}}");
+    k=0;
+//	printf("%s\r\n",dbuf);
+    ESP8266_SendString ( ENABLE, dbuf, 0, Single_ID_0 );               //发送数据
+//	myfree(dbuf);
+
+}
+void up_kaiguanstate(char *shebei_id,uint32_t	messageid,uint32_t	timestamp,uint8_t paixunum)
+{
+    uint8_t	paixu_0=0,i=0,k=0,kl=0;
+    k=paixunum/8;
+    kl=paixunum%8;
+    if(k!=0)
+    {
+        for(i=0; i<k; i++)
+        {
+            up_kaiguanstate2(shebei_id,	messageid,timestamp,i+1, paixu_0,paixu_0+8);
+            paixu_0+=8;
+        }
+    }
+    if(kl!=0)
+    {
+        up_kaiguanstate2(shebei_id,	messageid,timestamp,k+1, paixu_0,paixunum);
+    }
+
+
+}
+void paixu_yingda2(char *shebei_id,	uint32_t	messageid,uint32_t	timestamp,uint8_t pake,uint8_t paixu_0,uint8_t paixunum)
+{
+    char dbuf1[250];
+    uint32_t k=0;
+    //	char *dbuf=mymalloc(4400);
+    char dbuf[4400];
+    uint8_t i=0;
+    sprintf(dbuf1,"{\"messageid\": %d,\"timestamp\": %d,\"deviceid\": \"%s\",\"cmd\": \"CMD-109\",\"desired\": {\"sub\":%d,\"arrays\": [",messageid,timestamp,shebei_id,pake);
+    sprintf(dbuf+k,"%s",dbuf1);
+    k+=strlen(dbuf1);
+    for(i=paixu_0; i<paixunum; i++)
+    {
+        memset(dbuf1,0,250);
+        if(i==paixunum-1)
+        {
+            sprintf(dbuf1,"{ \"index\": %d,\"mode\": \"%s\",\"id\": %d,\"type\": %d,\"np\": %d,\"leakage\": %d,\"version\":\"1.0.0\"}",list_paixunum[i].index,list_paixunum[i].mode,list_paixunum[i].id,list_paixunum[i].type,list_paixunum[i].np,list_paixunum[i].leakage);
+        } else
+        {
+            sprintf(dbuf1,"{ \"index\": %d,\"mode\": \"%s\",\"id\": %d,\"type\": %d,\"np\": %d,\"leakage\": %d,\"version\":\"1.0.0\"},",list_paixunum[i].index,list_paixunum[i].mode,list_paixunum[i].id,list_paixunum[i].type,list_paixunum[i].np,list_paixunum[i].leakage);
+        }
+        sprintf(dbuf+k,"%s",dbuf1);
+        k+=strlen(dbuf1);
+
+    }
+    sprintf(dbuf+k,"]}}");
+    k=0;
+    printf("%s\r\n",dbuf);
+    ESP8266_SendString ( ENABLE, dbuf, 0, Single_ID_0 );               //发送数据
+//	myfree(dbuf);
+}
+void paixu_yingda(char *shebei_id,	uint32_t	messageid,uint32_t	timestamp,uint8_t paixunum)
+{
+    uint8_t	paixu_0=0,i=0,k=0,kl=0;
+    k=paixunum/8;
+    kl=paixunum%8;
+    if(k!=0)
+    {
+        for(i=0; i<k; i++)
+        {
+            paixu_yingda2(shebei_id,	messageid,timestamp,i+1, paixu_0,paixu_0+8);
+            paixu_0+=8;
+        }
+    }
+    if(kl!=0)
+    {
+        paixu_yingda2(shebei_id,	messageid,timestamp,k+1, paixu_0,paixunum);
+    }
+
+}
+
+void yingdajichuxinxi2(char *shebei_id,	uint32_t	messageid,uint32_t	timestamp,uint8_t pake,uint8_t paixu_0,uint8_t paixunum)
+{
+    char dbuf1[350];
+    uint32_t k=0;
+    uint8_t n=0;
+    //	char *dbuf=mymalloc(4400);
+    char dbuf[6400];
+    uint8_t i=0;
+    sprintf(dbuf1,"{\"messageid\": %d,\"timestamp\": %d,\"deviceid\": \"%s\",\"cmd\": \"CMD-101\",\"desired\": {\"sub\":%d,\"arrays\": [",messageid,timestamp,shebei_id,pake);
+    sprintf(dbuf+k,"%s",dbuf1);
+    k+=strlen(dbuf1);
+    for(i=paixu_0; i<paixunum; i++)
+    {
+        memset(dbuf1,0,350);
+        if(list_paixunum[i].np!=4)
+        {
+            if(i==paixunum-1)
+            {
+                sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"temp\": %d,\"auto\": %d,\"switch\": %d,\"leakage\": %d,\"current\": [%d],\"voltage\": [%d],\"power\": [%d] } } ",list_jibenxinxip[i].id,list_jibenxinxip[i].temp,list_jibenxinxip[i].autoin,list_jibenxinxip[i].switchin,list_jibenxinxip[i].leakage,list_jibenxinxip[i].current,list_jibenxinxip[i].voltage,list_jibenxinxip[i].power);
+            } else {
+                sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"temp\": %d,\"auto\": %d,\"switch\": %d,\"leakage\": %d,\"current\": [%d],\"voltage\": [%d],\"power\": [%d] } }, ",list_jibenxinxip[i].id,list_jibenxinxip[i].temp,list_jibenxinxip[i].autoin,list_jibenxinxip[i].switchin,list_jibenxinxip[i].leakage,list_jibenxinxip[i].current,list_jibenxinxip[i].voltage,list_jibenxinxip[i].power);
+            }
+
+        } else
+        {
+            if(i==paixunum-1)
+            {
+                sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"temp\": %d,\"auto\": %d,\"switch\": %d,\"leakage\": %d,\"current\": [%d,%d,%d],\"voltage\": [%d,%d,%d],\"power\": [%d] } } ",list_jibenxinxip[i].id,list_jibenxinxip[i].temp,list_jibenxinxip[i].autoin,list_jibenxinxip[i].switchin,list_jibenxinxip[i].leakage,list_jibenxinxip[i].Acurrent,list_jibenxinxip[i].Bcurrent,list_jibenxinxip[i].Ccurrent,list_jibenxinxip[i].Avoltage,list_jibenxinxip[i].Bvoltage,list_jibenxinxip[i].Cvoltage,list_jibenxinxip[i].power);
+            } else {
+                sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"temp\": %d,\"auto\": %d,\"switch\": %d,\"leakage\": %d,\"current\": [%d,%d,%d],\"voltage\": [%d,%d,%d],\"power\": [%d] } }, ",list_jibenxinxip[i].id,list_jibenxinxip[i].temp,list_jibenxinxip[i].autoin,list_jibenxinxip[i].switchin,list_jibenxinxip[i].leakage,list_jibenxinxip[i].Acurrent,list_jibenxinxip[i].Bcurrent,list_jibenxinxip[i].Ccurrent,list_jibenxinxip[i].Avoltage,list_jibenxinxip[i].Bvoltage,list_jibenxinxip[i].Cvoltage,list_jibenxinxip[i].power);
+            }
+
+        }
+
+        sprintf(dbuf+k,"%s",dbuf1);
+        k+=strlen(dbuf1);
+    }
+    sprintf(dbuf+k,"]}}");
+    k=0;
+    printf("%s\r\n",dbuf);
+    ESP8266_SendString ( ENABLE, dbuf, 0, Single_ID_0 );               //发送数据
+//	myfree(dbuf);
+
+}
+void yingdajichuxinxix(char *shebei_id,	uint32_t	messageid,uint32_t	timestamp,uint8_t pake,uint8_t paixunum)
+{
+    char dbuf1[350];
+    uint32_t k=0;
+    uint8_t n=0;
+    //	char *dbuf=mymalloc(4400);
+    char dbuf[6400];
+    uint8_t i=0;
+    i=paixunum-1;
+    sprintf(dbuf1,"{\"messageid\": %d,\"timestamp\": %d,\"deviceid\": \"%s\",\"cmd\": \"CMD-102\",\"desired\": {\"sub\":%d,\"arrays\": [",messageid,timestamp,shebei_id,pake);
+    sprintf(dbuf+k,"%s",dbuf1);
+    k+=strlen(dbuf1);
+//	for(i=paixu_0;i<paixunum;i++)
+    {
+        memset(dbuf1,0,350);
+        if(list_paixunum[i].np!=4)
+        {
+
+            sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"nopower\": %d,\"frequency\": %d,\"electricity\":%d,\"powerfactor\": %d,\"shortcircuitnum\": %d,\"temp\": %d,\"leakage\": %d,\"version\": \"1.0.0\",\"switch\": %d,\"auto\": %d,\"current\": [%d],\"voltage\": [%d],\"power\": [%d]}}",
+                    list_jibenxinxip[i].id,list_jibenxinxip[i].attdata_power_ps,frequency,list_jibenxinxip[i].total_enery_p,list_jibenxinxip[i].power,list_jibenxinxip[i].ShortTripp_times,list_jibenxinxip[i].temp,list_jibenxinxip[i].leakage,list_jibenxinxip[i].autoin,list_jibenxinxip[i].switchin,list_jibenxinxip[i].current,list_jibenxinxip[i].voltage,list_jibenxinxip[i].power);
+
+
+        } else
+        {
+
+            sprintf(dbuf1,"{\"device\": {\"id\": %d},\"status\": {\"nopower\": %d,\"frequency\": %d,\"electricity\":%d,\"powerfactor\": %d,\"shortcircuitnum\": %d,\"temp\": %d,\"leakage\": %d,\"version\": \"1.0.0\",\"switch\": %d,\"auto\": %d,\"current\": [%d,%d,%d],\"voltage\": [%d,%d,%d],\"power\": [%d]}}",
+                    list_jibenxinxip[i].id,list_jibenxinxip[i].attdata_power_ps,frequency,list_jibenxinxip[i].total_enery_p,list_jibenxinxip[i].power,list_jibenxinxip[i].ShortTripp_times,list_jibenxinxip[i].temp,list_jibenxinxip[i].leakage,list_jibenxinxip[i].autoin,list_jibenxinxip[i].switchin,
+                    list_jibenxinxip[i].Acurrent,list_jibenxinxip[i].Bcurrent,list_jibenxinxip[i].Ccurrent,list_jibenxinxip[i].Avoltage,list_jibenxinxip[i].Bvoltage,list_jibenxinxip[i].Cvoltage,list_jibenxinxip[i].power);
+
+        }
+
+        sprintf(dbuf+k,"%s",dbuf1);
+        k+=strlen(dbuf1);
+    }
+    sprintf(dbuf+k,"]}}");
+    k=0;
+    printf("%s\r\n",dbuf);
+    ESP8266_SendString ( ENABLE, dbuf, 0, Single_ID_0 );               //发送数据
+//	myfree(dbuf);
+
+}
+void yingdajichuxinxi(char *shebei_id,	uint32_t	messageid,uint32_t	timestamp,uint8_t paixunum)
+{
+    uint8_t	paixu_0=0,i=0,k=0,kl=0;
+    k=paixunum/8;
+    kl=paixunum%8;
+    if(k!=0)
+    {
+        for(i=0; i<k; i++)
+        {
+            yingdajichuxinxi2(shebei_id,	messageid,timestamp,i+1, paixu_0,paixu_0+8);
+            paixu_0+=8;
+        }
+    }
+    if(kl!=0)
+    {
+        yingdajichuxinxi2(shebei_id,	messageid,timestamp,k+1, paixu_0,paixunum);
+    }
+
+
+
+}
+/***********************************************************
+  函数名称：Find_string(char *pcBuf,char*left,char*right, char *pcRes)
+  函数功能：寻找特定字符串
+  入口参数：
+           char *pcBuf 为传入的字符串
+           char*left   为搜索字符的左边标识符  例如："["
+           char*right  为搜索字符的右边标识符  例如："]"
+					 char *pcRes 为输出转存的字符串数组
+  返回值：用来校验是否成功，无所谓的。
+  备注：
+ 服务器下发命令举例：+MQTTPUBLISH: 0,0,0,0,/device/NB/zx99999999999999_back,6,[reastrobot]
+***********************************************************/
+int Find_string(char *pcBuf,char*left,char*right, char *pcRes)
+{
+    char *pcBegin = NULL;
+    char *pcEnd = NULL;
+
+    pcBegin = strstr(pcBuf, left);
+    pcEnd = strstr(pcBuf, right);
+
+    if(pcBegin == NULL || pcEnd == NULL || pcBegin > pcEnd)
+    {
+        printf("Mail name not found!\n");
+    }
+    else
+    {
+        pcBegin += strlen(left);
+        memcpy(pcRes, pcBegin, pcEnd-pcBegin);
+    }
+
+    return 0;
+}
+uint32_t cifang(uint8_t n)
+{   uint8_t i=0;
+    uint32_t sum=1;
+    for(i=0; i<n; i++)
+    {
+        sum=sum*10;
+    }
+
+    return sum;
+}
+/***********************************************************
+  函数名称：Str_To_ASC （适用于ME3616）
+  函数功能：遍历字符串   逐个处理分析转为ASCII格式给NB
+  入口参数：char* a
+  出口参数：无
+  备 注：
+  ##0112QN=20190306152401;ST=32;CN=51;PW=CITC2018+;MN=112019015222;Flag=5 ;CP=&&LA=30;TE=25;HU=75;&&1C80\r\n
+***********************************************************/
+uint32_t Str_To_ASC(char* a)
+{
+    int i,k=0,hj=1,nk=0;
+    uint8_t w;
+    uint32_t sum=0;
+    int x;
+    for (i = 0; a[i] != '\0'; i++)
+    {
+//		if(a[i]=='-')
+//		{
+//			hj=1;
+//		}
+        if (a[i] >= '0' && a[i] <= '9'&&nk==0) //数字处理
+        {
+            k++;
+        } else
+        {
+            if(k!=0)
+            {
+                nk=1;
+            }
+        }
+    }
+    i=k;
+    while (i--)
+    {
+        if (a[i] >= '0' && a[i] <= '9') //数字处理
+        {
+            w = a[i] - '0'; //单个字符转  int
+            sum+=w*cifang(k-1-i);
+
+        }
+    }
+    sum=sum*hj;
+    return sum;
+
+}
+void struct_init()
+{   uint8_t i=0;
+    for(i=0; i<paixuNO; i++)
+    {
+        list_paixunum[i].index=i+1;
+        list_paixunum[i].id=((SSN[i][0]<<24)+(SSN[i][1]<<16)+(SSN[i][2]<<8)+SSN[i][3]);
+//		(list_paixunum[i].mode)="v";
+        strcpy(list_paixunum[i].mode,"C63");
+        list_paixunum[i].type=2;//2分开关 1主开关
+        list_paixunum[i].np=0;//2p
+        list_paixunum[i].leakage=1;//1带漏电 0不带漏电
+
+        list_jibenxinxip[i].id=((SSN[i][0]<<24)+(SSN[i][1]<<16)+(SSN[i][2]<<8)+SSN[i][3]);
+        list_jibenxinxip[i].autoin=0;
+        list_jibenxinxip[i].leakage=1;
+        list_jibenxinxip[i].switchin=0;
+        list_jibenxinxip[i].current=0;
+        list_jibenxinxip[i].temp=340;
+        list_jibenxinxip[i].voltage=2300;
+        list_jibenxinxip[i].power=0;
+    }
+
+
+}
+void UP_baseinformation(char *shebei_id,	uint32_t	messageid,uint32_t	timestamp)
+{
+    uint8_t i=0;
+    caxun_allkaiguan(paixuNO);
+    paixu_yingda(shebei_id,messageid,timestamp,paixuNO);
+    Delay_ms (20);
+    for(i=0; i<paixuNO; i++)
+    {
+        Dengdai_ITflagn=0;
+        shezi_kaiguan(i+1);
+        if(Dengdai_ITrflag==0)
+        {
+            shezi_kaiguan(i+1);
+        }
+        if(Dengdai_ITrflag==1)
+        {
+            UP_SZ_data(shebei_id,messageid,timestamp,i+1);
+            Delay_ms (10);
+            Dengdai_ITrflag=0;
+        }
+    }
+
+
+}
+void gettime_timeamp(uint32_t	timestamp)
+{
+    struct tm *tn;
+    char *cStr;
+    char buf[160];
+    uint32_t	timestamp_AS=0;
+    cStr=(char*)mymalloc(800);
+    while(strEsp8266_Fram_Record .InfBit .FramFinishFlag==0 )
+    {
+
+
+    }
+    strEsp8266_Fram_Record .Data_RX_BUF [ strEsp8266_Fram_Record .InfBit .FramLength ] = '\0';
+    cStr = strEsp8266_Fram_Record .Data_RX_BUF;
+    strEsp8266_Fram_Record .InfBit .FramFinishFlag=0;
+    strEsp8266_Fram_Record .InfBit .FramLength = 0;
+    if ( strstr ( cStr, "\"timestamp\":" ) )
+    {
+        memset(buf,0,160);
+        Find_string(cStr,"\"timestamp\":","\"deviceid\"" ,buf);
+        timestamp=Str_To_ASC(buf);
+    }
+    memset(cStr,0,800);
+    myfree(cStr);
+    timestamp_AS=timestamp+28800;
+    tn=localtime(&timestamp_AS);
+    printf("%04d-%02d-%02d %02d:%02d:%02d\r\n", tn->tm_year+1900,tn->tm_mon+1, tn->tm_mday, tn->tm_hour, tn->tm_min, tn->tm_sec);
+    sDefaultTime.year = tn->tm_year;
+    sDefaultTime.month = tn->tm_mon;
+    sDefaultTime.mday = tn->tm_mday;
+    sDefaultTime.wday = tn->tm_wday;
+    sDefaultTime.hour =tn->tm_hour;
+    sDefaultTime.min = tn->tm_min;
+    sDefaultTime.sec =tn->tm_sec;
+
+
+}
+/**
+  * @brief  ESP8266 （Sta Tcp Client）透传
+  * @param  无
+  * @retval 无
+  */
+uint32_t numgh=0;
+void ESP8266_StaTcpClient_UnvarnishTest ( void )
+{   char *cStr;// [ 100 ] = { 0 };
+    struct tm *tn;
+    char shebei_id[30]="TS527A022";
+//	char shebei_id[20]="MT419B5032";
+    uint32_t TimingDelaynums=0,timestamp_AS=0,i=0;
+    uint8_t paixu_tf=0,js_flg=0;
+    char buff[80];
+    char buf[160];
+    uint32_t	messageid=12133422;
+    uint32_t	timestamp=1231323213;
+    printf ( "\r\n正在配置 ESP8266 ......\r\n" );
+
+    macESP8266_CH_ENABLE();
+
+    ESP8266_AT_Test ();
+
+    ESP8266_Net_Mode_Choose ( STA );
+
+    while ( ! ESP8266_JoinAP ( macUser_ESP8266_ApSsid, macUser_ESP8266_ApPwd ) );
+    Delay_ms (1130);
+    ESP8266_Enable_MultipleId ( DISABLE );
+    while ( !	ESP8266_Link_Server ( enumTCP, macUser_ESP8266_TcpServer_IP, macUser_ESP8266_TcpServer_Port, Single_ID_0 ) );
+//		ESP8266_Cmd ( "AT+CIPSEND=56", "OK", NULL,100 );
+//		 ESP8266_Cmd ( "AT+CIPMODE=1", "OK", NULL,100 );
+//	 ESP8266_Cmd ( "AT+CIPSEND", "OK", ">", 500 );
+    while ( ! ESP8266_UnvarnishSend () );
+
+//ESP8266_Cmd ( "http://39.107.239.44:1880/STM32OTA?imei=868540050007893", "OK", NULL,2000 );
+//ESP8266_Cmd ( "GET http://106.13.150.28:1880/STM32OTA?imei=864999042533149", "OK", NULL,200 );
+//ESP8266_Cmd ( "GET http://106.13.150.28:1880/STM32OTA?imei=864999042533149", "OK", NULL,200 );
+//	while ( ! ESP8266_UnvarnishSend () );
+    printf ( "\r\n配置 ESP8266 完毕\r\n" );
+    strEsp8266_Fram_Record .InfBit .FramFinishFlag=0;
+//	denglu_TCP(shebei_id,	messageid,timestamp);
+//atk_8266_send_cmd("AT+CIPSEND=0,371","OK",200);
+//ESP8266_Cmd ( "AT+CIPSEND=56", "OK", NULL,200 );
+//ESP8266_Cmd ( "AT+CIPSEND=56", "OK", NULL,100 );
+//ESP8266_Cmd ( "GET http://106.13.150.28:1880/STM32OTA?imei=864999042533149", "OK", NULL,200 );
+//ESP8266_Cmd ( "GET http://106.13.150.28:1880/STM32OTA?imei=864999042533149", "OK", NULL,100 );
+    strEsp8266_Fram_Record .InfBit .FramLength = 0;
+    strEsp8266_Fram_Record .InfBit .FramFinishFlag = 0;
+    cStr=(char*)mymalloc(8192);
+    numgh=0;
+    ESP8266_Cmd ( "GET http://39.107.239.44:1880/STM32OTA?imei=868540050007893\r\n\r\n", "HTTP/1.1", NULL,2000 );
+
+//macESP8266_Usart( "GET http://39.107.239.44:1880/STM32OTA?imei=868540050007893\r\n\r\n" );
+// Delay_ms(10);
+    while(1)
+    {
+        if (strEsp8266_Fram_Record .InfBit .FramFinishFlag==1 )
+        {
+
+
+//											strEsp8266_Fram_Record .Data_RX_BUF [ strEsp8266_Fram_Record .InfBit .FramLength ] = '\0';
+//            cStr = strEsp8266_Fram_Record .Data_RX_BUF;
+            strEsp8266_Fram_Record .InfBit .FramFinishFlag=0;
+										
+
+												for(i=0;i<strEsp8266_Fram_Record .InfBit .FramLength;i++)
+												{
+												printf("%c",strEsp8266_Fram_Record .Data_RX_BUF[i]);
+												}
+	 printf("\r\n***********************IDLE---%d %d\r\n",numgh,strEsp8266_Fram_Record .InfBit .FramLength);
+
+
+                strEsp8266_Fram_Record .InfBit .FramLength = 0;
+                strEsp8266_Fram_Record .InfBit .FramFinishFlag = 0;
+                strEsp8266_Fram_Record .InfBit .FramFinishFlag=0;
+					
+				
+					
+					
+//                memset(cStr,0,8192);
+							 memset(strEsp8266_Fram_Record .Data_RX_BUF,0x00,sizeof(strEsp8266_Fram_Record .Data_RX_BUF));
+            
+
+
+
+        } else
+        {
+            ESP8266_relink();
+
+        }
+    }
+
+
+}
+

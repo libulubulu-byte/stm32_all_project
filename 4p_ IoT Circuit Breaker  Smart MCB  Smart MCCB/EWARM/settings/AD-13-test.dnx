@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<settings>
+    <DebugChecksum>
+        <Checksum>1213072652</Checksum>
+    </DebugChecksum>
+    <Exceptions>
+        <StopOnUncaught>_ 0</StopOnUncaught>
+        <StopOnThrow>_ 0</StopOnThrow>
+    </Exceptions>
+    <Stack>
+        <FillEnabled>0</FillEnabled>
+        <OverflowWarningsEnabled>1</OverflowWarningsEnabled>
+        <WarningThreshold>90</WarningThreshold>
+        <SpWarningsEnabled>1</SpWarningsEnabled>
+        <WarnLogOnly>1</WarnLogOnly>
+        <UseTrigger>1</UseTrigger>
+        <TriggerName>main</TriggerName>
+        <LimitSize>0</LimitSize>
+        <ByteLimit>50</ByteLimit>
+    </Stack>
+    <CallStack>
+        <ShowArgs>0</ShowArgs>
+    </CallStack>
+    <Disassembly>
+        <MixedMode>1</MixedMode>
+    </Disassembly>
+    <JLinkDriver>
+        <CStepIntDis>_ 0</CStepIntDis>
+        <LeaveTargetRunning>_ 0</LeaveTargetRunning>
+    </JLinkDriver>
+    <StLinkDriver>
+        <stlinkserialNo>434B4E00</stlinkserialNo>
+        <stlinkfoundProbes />
+        <stlinkResetStyle>0</stlinkResetStyle>
+        <stlinkResetStrategy>2</stlinkResetStrategy>
+        <CStepIntDis>_ 0</CStepIntDis>
+        <LeaveTargetRunning>_ 0</LeaveTargetRunning>
+    </StLinkDriver>
+    <struct_types>
+        <Fmt0>struct att_data_t-power_p	3	0</Fmt0>
+        <Fmt1>struct workdata_t-alarmcode	4	0</Fmt1>
+        <Fmt2>struct workdata_t-ntc_temperature	3	0</Fmt2>
+        <Fmt3>struct workdata_t-power_factor	3	0</Fmt3>
+    </struct_types>
+    <watch_formats>
+        <Fmt0>{W}1:fifolen	2	0</Fmt0>
+        <Fmt1>{W}1:real_dt	4	0</Fmt1>
+        <Fmt2>{W}1:tmp_dt	4	0</Fmt2>
+    </watch_formats>
+    <CallStackLog>
+        <Enabled>0</Enabled>
+    </CallStackLog>
+    <CallStackStripe>
+        <ShowTiming>1</ShowTiming>
+    </CallStackStripe>
+    <TermIOLog>
+        <LoggingEnabled>_ 0</LoggingEnabled>
+        <LogFile>_ ""</LogFile>
+    </TermIOLog>
+    <LogFile>
+        <LoggingEnabled>_ 0</LoggingEnabled>
+        <LogFile>_ ""</LogFile>
+        <Category>_ 0</Category>
+    </LogFile>
+    <DisassembleMode>
+        <mode>0</mode>
+    </DisassembleMode>
+    <Breakpoints2>
+        <Bp0>_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\user_app\src\att7053bu.c}.362.4" 0 0 1 "" 0 "" 0</Bp0>
+        <Bp1>_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_rcc.c}.807.5" 0 0 1 "" 0 "" 0</Bp1>
+        <Bp2>_ 0 "EMUL_CODE" "{$PROJ_DIR$\..\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_tim.c}.2774.3" 0 0 1 "" 0 "" 0</Bp2>
+        <Bp3>_ 0 "EMUL_DATA" "ADC_value" 0 0 0 0 4294967295</Bp3>
+        <Count>4</Count>
+    </Breakpoints2>
+    <Aliases>
+        <A0>_ "C:\Users\Administrator\Desktop\AD-39 - test -2P\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_dma.c" ""</A0>
+        <A1>_ "C:\Users\Administrator\Desktop\AD-39 - test -2P_0911\Src\main.c" ""</A1>
+        <A2>_ "C:\Users\Administrator\Desktop\AD39\AD-391011\AD-39 -2P-1018\EWARM\startup_stm32f030x8.s" ""</A2>
+        <A3>_ "C:\Users\EDZ\Desktop\AD39\AD-39 - test -2P\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_dma.c" ""</A3>
+        <A4>_ "C:\Users\EDZ\Desktop\AD39\AD-39 - test -2P\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_tim.c" ""</A4>
+        <A5>_ "C:\Users\EDZ\Desktop\AD39\AD-39 - test -2P\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_tim_ex.c" ""</A5>
+        <A6>_ "C:\Users\EDZ\Desktop\AD39\AD-39 - test -2P\EWARM\startup_stm32f030x8.s" ""</A6>
+        <A7>_ "C:\Users\EDZ\Desktop\AD39\AD-39 - test -2P\Src\main.c" ""</A7>
+        <A8>_ "C:\Users\EDZ\Desktop\AD39\AD-39 - test -2P\Src\stm32f0xx_hal_msp.c" ""</A8>
+        <Count>9</Count>
+        <SuppressDialog>0</SuppressDialog>
+    </Aliases>
+</settings>

@@ -1,0 +1,10 @@
+..\obj\deflate.o: ..\zlib\deflate.c
+..\obj\deflate.o: ..\zlib\deflate.h
+..\obj\deflate.o: ..\zlib\zutil.h
+..\obj\deflate.o: ..\zlib\zlib.h
+..\obj\deflate.o: ..\zlib\zconf.h
+..\obj\deflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+..\obj\deflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+..\obj\deflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+..\obj\deflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\obj\deflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h

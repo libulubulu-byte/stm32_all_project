@@ -1,0 +1,10 @@
+..\obj\crc32.o: ..\zlib\crc32.c
+..\obj\crc32.o: ..\zlib\zutil.h
+..\obj\crc32.o: ..\zlib\zlib.h
+..\obj\crc32.o: ..\zlib\zconf.h
+..\obj\crc32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+..\obj\crc32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+..\obj\crc32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+..\obj\crc32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\obj\crc32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+..\obj\crc32.o: ..\zlib\crc32.h

@@ -1,0 +1,15 @@
+"D:\arm\bin\armproc.dll" 
+
+"D:\arm\bin\armstlink2.dll" 
+
+"F:\桌面\文件\beifen\canshu\2px12样品_两边排序测试\EWARM\AD-13-test\Exe\AD-13-test.out" 
+
+--plugin="D:\arm\bin\armbat.dll" 
+
+--device_macro="D:\arm\config\debugger\ST\STM32F0xx.dmac" 
+
+--flash_loader="D:\arm\config\flashloader\ST\FlashSTM32F03xx8.board" 
+
+
+
+

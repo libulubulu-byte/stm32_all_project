@@ -1,0 +1,10 @@
+..\obj\inftrees.o: ..\zlib\inftrees.c
+..\obj\inftrees.o: ..\zlib\zutil.h
+..\obj\inftrees.o: ..\zlib\zlib.h
+..\obj\inftrees.o: ..\zlib\zconf.h
+..\obj\inftrees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+..\obj\inftrees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+..\obj\inftrees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+..\obj\inftrees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\obj\inftrees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+..\obj\inftrees.o: ..\zlib\inftrees.h

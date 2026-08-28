@@ -1,0 +1,87 @@
+<html>
+<body>
+<pre>
+<h1>礦ision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: μVision V5.26.2.0
+Copyright (C) 2018 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: 123456 75, 5, LIC=ZB4EI-TD2FJ-30CNC-7UG68-EUBX7-S74RX
+ 
+Tool Versions:
+Toolchain:       MDK-ARM Plus  Version: 5.26.2.0
+Toolchain Path:  D:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 update 6 (build 750)
+Assembler:       Armasm.exe V5.06 update 6 (build 750)
+Linker/Locator:  ArmLink.exe V5.06 update 6 (build 750)
+Library Manager: ArmAr.exe V5.06 update 6 (build 750)
+Hex Converter:   FromElf.exe V5.06 update 6 (build 750)
+CPU DLL:         SARMCM3.DLL V5.26.2.0
+Dialog DLL:      DARMSTM.DLL V1.68.0.0
+Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V3.0.5.0
+Dialog DLL:      TARMSTM.DLL V1.66.0.0
+ 
+<h2>Project:</h2>
+D:\gongzuo\WIFI\WIFI升级_最终\IAP-Bootloader\USER\IAP.uvprojx
+Project File Date:  03/08/2021
+
+<h2>Output:</h2>
+*** Using Compiler 'V5.06 update 6 (build 750)', folder: 'D:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'IAP'
+compiling stm32f10x_it.c...
+compiling main.c...
+main.c(52): warning:  #177-D: variable "oldcount"  was declared but never referenced
+  	u16 oldcount=0;				//老的串口接收数据值
+main.c(53): warning:  #177-D: variable "applenth"  was declared but never referenced
+  	u16 applenth=0;				//接收到的app代码长度
+main.c(54): warning:  #177-D: variable "clearflag"  was declared but never referenced
+  	uint8_t clearflag=0;
+main.c(55): warning:  #177-D: variable "a"  was declared but never referenced
+  	uint8_t a=0;
+main.c(57): warning:  #177-D: variable "app_bin"  was declared but never referenced
+  	uint8_t app_bin = 0;
+main.c(58): warning:  #177-D: variable "app_enter"  was declared but never referenced
+  	uint8_t app_enter = 0;
+main.c(89): warning:  #177-D: variable "j"  was declared but never referenced
+  	    uint8_t temp[1024];int i=0;int j=0;
+main.c: 7 warnings, 0 errors
+compiling system_stm32f10x.c...
+compiling stmflash.c...
+compiling key.c...
+compiling delay.c...
+compiling usart.c...
+assembling startup_stm32f10x_hd.s...
+compiling Wenzheng_OTA.c...
+Wenzheng_OTA.c(4): warning:  #47-D: incompatible redefinition of macro "FLASH_BASE"  (declared at line 1272 of "..\USER\stm32f10x.h")
+  #define FLASH_BASE            (0x08000000UL) /*!< FLASH(up to 128KB) base address */
+Wenzheng_OTA.c(142): warning:  #940-D: missing return statement at end of non-void function "Erase_page" 
+  }
+Wenzheng_OTA.c: 2 warnings, 0 errors
+compiling core_cm3.c...
+compiling misc.c...
+compiling stm32f10x_fsmc.c...
+compiling stm32f10x_gpio.c...
+compiling stm32f10x_rcc.c...
+compiling stm32f10x_usart.c...
+compiling iap.c...
+compiling stm32f10x_flash.c...
+linking...
+Program Size: Code=8168 RO-data=376 RW-data=52 ZI-data=60364  
+FromELF: creating hex file...
+"..\OBJ\IAP.axf" - 0 Error(s), 9 Warning(s).
+
+<h2>Software Packages used:</h2>
+
+Package Vendor: Keil
+                http://www.keil.com/pack/Keil.STM32F1xx_DFP.2.3.0.pack
+                Keil.STM32F1xx_DFP.2.3.0
+                STMicroelectronics STM32F1 Series Device Support, Drivers and Examples
+
+<h2>Collection of Component include folders:</h2>
+  .\RTE\_IAP
+  d:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.3.0\Device\Include
+
+<h2>Collection of Component Files used:</h2>
+Build Time Elapsed:  00:00:17
+</pre>
+</body>
+</html>

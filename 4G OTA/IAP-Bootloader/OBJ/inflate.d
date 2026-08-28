@@ -1,0 +1,13 @@
+..\obj\inflate.o: ..\zlib\inflate.c
+..\obj\inflate.o: ..\zlib\zutil.h
+..\obj\inflate.o: ..\zlib\zlib.h
+..\obj\inflate.o: ..\zlib\zconf.h
+..\obj\inflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+..\obj\inflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+..\obj\inflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+..\obj\inflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\obj\inflate.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+..\obj\inflate.o: ..\zlib\inftrees.h
+..\obj\inflate.o: ..\zlib\inflate.h
+..\obj\inflate.o: ..\zlib\inffast.h
+..\obj\inflate.o: ..\zlib\inffixed.h

@@ -1,0 +1,11 @@
+#include "stm32f10x.h"
+#include <stdio.h>  
+#include <stdbool.h>
+#include "sys.h"
+#include "string.h"
+#include "delay.h"
+#include "stdint.h"
+#include <ctype.h>
+#include <stdlib.h>
+void OTA_4G(void);
+void GPIO_init(void);

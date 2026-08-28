@@ -1,0 +1,9 @@
+..\obj\adler32.o: ..\zlib\adler32.c
+..\obj\adler32.o: ..\zlib\zutil.h
+..\obj\adler32.o: ..\zlib\zlib.h
+..\obj\adler32.o: ..\zlib\zconf.h
+..\obj\adler32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+..\obj\adler32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+..\obj\adler32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+..\obj\adler32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\obj\adler32.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h

@@ -1,0 +1,31 @@
+
+T3E80 147:773 SEGGER J-Link V6.32i Log File (0002ms, 0018ms total)
+T3E80 147:773 DLL Compiled: Jul 24 2018 15:19:55 (0002ms, 0018ms total)
+T3E80 147:773 Logging started @ 2022-08-09 22:32 (0002ms, 0018ms total)
+T3E80 147:775 JLINK_SetWarnOutHandler(...) (0001ms, 0019ms total)
+T3E80 147:776 JLINK_OpenEx(...)
+  ***** Error: Cannot connect to J-Link via USB.  returns "Cannot connect to J-Link via USB." (0001ms, 0020ms total)
+
+  ***** API Error: API JLINK_GetHardwareVersion function called before JLINKARM_Open()
+T3E80 147:777 
+  ***** Error: Cannot connect to J-Link via USB.JLINK_IsOpen()  returns 0x00 (0000ms, 0021ms total)
+T3E80 149:641 JLINK_EMU_SelectByUSBSN(SerialNo = 0)  returns 0xFFFFFFFF (0001ms, 0022ms total)
+T3E80 149:643 JLINK_EnableLog(...) (0000ms, 0023ms total)
+T3E80 149:643 JLINK_SetWarnOutHandler(...) (0000ms, 0023ms total)
+T3E80 149:643 JLINK_OpenEx(...)
+  ***** Error: Cannot connect to J-Link via USB.  returns "Cannot connect to J-Link via USB." (0000ms, 0023ms total)
+
+  ***** API Error: API JLINK_GetHardwareVersion function called before JLINKARM_Open()
+T3E80 149:643 
+  ***** Error: Cannot connect to J-Link via USB.JLINK_IsOpen()  returns 0x00 (0000ms, 0024ms total)
+T3E80 153:152 JLINK_EMU_SelectByUSBSN(SerialNo = 0)  returns 0xFFFFFFFF (0000ms, 0024ms total)
+T3E80 153:152 JLINK_EnableLog(...) (0000ms, 0024ms total)
+T3E80 153:152 JLINK_SetWarnOutHandler(...) (0000ms, 0024ms total)
+T3E80 153:152 JLINK_OpenEx(...)
+  ***** Error: Cannot connect to J-Link via USB.  returns "Cannot connect to J-Link via USB." (0001ms, 0025ms total)
+
+  ***** API Error: API JLINK_GetHardwareVersion function called before JLINKARM_Open()
+T3E80 153:153 
+  ***** Error: Cannot connect to J-Link via USB.JLINK_Close() (0000ms, 0025ms total)
+T3E80 160:673  (0000ms, 0025ms total)
+T3E80 160:673 Closed (0000ms, 0025ms total)

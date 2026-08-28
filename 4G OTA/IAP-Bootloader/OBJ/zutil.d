@@ -1,0 +1,12 @@
+..\obj\zutil.o: ..\zlib\zutil.c
+..\obj\zutil.o: ..\zlib\zutil.h
+..\obj\zutil.o: ..\zlib\zlib.h
+..\obj\zutil.o: ..\zlib\zconf.h
+..\obj\zutil.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+..\obj\zutil.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+..\obj\zutil.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+..\obj\zutil.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\obj\zutil.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+..\obj\zutil.o: ..\zlib\gzguts.h
+..\obj\zutil.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+..\obj\zutil.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\errno.h

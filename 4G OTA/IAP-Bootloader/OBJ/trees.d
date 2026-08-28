@@ -1,0 +1,11 @@
+..\obj\trees.o: ..\zlib\trees.c
+..\obj\trees.o: ..\zlib\deflate.h
+..\obj\trees.o: ..\zlib\zutil.h
+..\obj\trees.o: ..\zlib\zlib.h
+..\obj\trees.o: ..\zlib\zconf.h
+..\obj\trees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stddef.h
+..\obj\trees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\limits.h
+..\obj\trees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
+..\obj\trees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+..\obj\trees.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
+..\obj\trees.o: ..\zlib\trees.h

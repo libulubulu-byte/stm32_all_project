@@ -1,0 +1,18 @@
+!SESSION 2019-07-22 17:38:07.099 -----------------------------------------------
+eclipse.buildId=unknown
+java.version=1.8.0_121
+java.vendor=Oracle Corporation
+BootLoader constants: OS=win32, ARCH=x86, WS=win32, NL=zh_CN
+Command-line arguments:  -os win32 -ws win32 -arch x86 -data C:\Users\EDZ\Desktop\AD-39 - test\EWARM
+
+!ENTRY com.iar.cdt.arm.toolchain.cmsis.adapter 1 0 2019-07-22 17:38:12.519
+!MESSAGE Using CMSIS pack repositories: http://links.iar.com/cmsis/pack
+
+!ENTRY com.iar.cmsismanager.product 1 0 2019-07-22 17:38:13.272
+!MESSAGE CMSIS Agent interface registered with service registry at ServiceLocation(host:\\.\pipe\iar-cspy-cpp-binary-com.iar.thrift.service.registry-07fd8eae-0241-41c7-bdaa-d6ccd36bef8e-1, port:0, protocol:Binary, transport:Pipe)
+
+!ENTRY com.iar.cmsismanager.product 1 0 2019-07-22 17:41:19.282
+!MESSAGE CMSIS Agent interface deregistered with service registry at ServiceLocation(host:\\.\pipe\iar-cspy-cpp-binary-com.iar.thrift.service.registry-07fd8eae-0241-41c7-bdaa-d6ccd36bef8e-1, port:0, protocol:Binary, transport:Pipe)
+
+!ENTRY com.iar.cmsismanager.product 1 0 2019-07-22 17:41:19.283
+!MESSAGE Exiting workbench is response to shutdown() command.
