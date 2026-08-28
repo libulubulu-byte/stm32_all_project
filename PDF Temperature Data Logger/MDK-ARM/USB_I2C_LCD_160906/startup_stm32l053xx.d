@@ -1,0 +1,1 @@
+usb_i2c_lcd_160906\startup_stm32l053xx.o: startup_stm32l053xx.s
